@@ -44,14 +44,15 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 - [ ] T008 [P] Implement the extension manifest Zod schema in `src/core/extensions/manifest.ts` per `contracts/extension-manifest.md`
 - [ ] T009 Implement the manifest-first lazy extension loader in `src/core/extensions/loader.ts` — validates `extension.json` via T008 before any `import()`, gates the `import()` on declared `activationEvents`, and catches load/import failures into a load-error state (Principle II, Principle V, FR-002, FR-014; depends on T008)
 - [ ] T010 Implement `StorageAPI` in `src/core/storage/StorageAPI.ts` — `get`/`set`/`delete`/`list`, resolving `<data-root>/extensions/<id>/` internally, never exposing a path to callers; missing/corrupted backing file resolves to "no data" instead of throwing (Principle III, FR-005; per `contracts/storage-api.md`)
-- [ ] T011 Implement the `focused`-scope keybind capture wrapper in `src/core/keybinds/FocusedScope.tsx` using `useKeyboard`, returning claim/delegate (Principle IV, FR-006; per `contracts/keybind-chain.md`)
-- [ ] T012 Implement the `local`-scope keybind capture wrapper in `src/core/keybinds/LocalScope.tsx`, only mounted while an extension's focus view is active, delegating unclaimed keys onward (depends on T011)
-- [ ] T013 Implement the `global`-scope keybind capture wrapper in `src/core/keybinds/GlobalScope.tsx`, always mounted at the app root, receiving only keys no more specific scope claimed (depends on T012) — completes the three-level chain
-- [ ] T014 [P] Implement the `DashboardShell` component skeleton (grid/sidebar/statusbar/overlay regions, no navigation logic yet) in `src/core/DashboardShell.tsx` (FR-001; depends on T006, T007)
-- [ ] T015 [P] Implement the YAML+Zod host config loader in `src/core/config.ts` (which extensions are enabled) per the constitution's "Zod-validated YAML is the only supported configuration format"
-- [ ] T016 [P] Unit test keybind-chain precedence and delegation (focused claims → local never sees it; local claims → global never sees it; unclaimed key reaches global) in `tests/unit/keybind-chain.test.ts` (depends on T011–T013)
-- [ ] T017 [P] Unit test manifest validation (valid manifest passes; missing `activationEvents`/malformed `id` rejected; code is never imported for an invalid manifest) in `tests/unit/manifest-validation.test.ts` (depends on T008, T009)
-- [ ] T018 [P] Contract test for the extension manifest schema in `tests/contract/extension-manifest.test.ts` against `contracts/extension-manifest.md`'s concrete Tasks manifest instance (depends on T008)
+- [ ] T011 [P] Unit test: two differently-scoped `StorageAPI` instances (e.g. `"tasks"` and `"notes"`) cannot read or write each other's keys, and a missing/corrupted backing file resolves to empty rather than throwing, in `tests/unit/storage-api.test.ts` (Principle III, FR-005; depends on T010)
+- [ ] T012 Implement the `focused`-scope keybind capture wrapper in `src/core/keybinds/FocusedScope.tsx` using `useKeyboard`, returning claim/delegate (Principle IV, FR-006; per `contracts/keybind-chain.md`)
+- [ ] T013 Implement the `local`-scope keybind capture wrapper in `src/core/keybinds/LocalScope.tsx`, only mounted while an extension's focus view is active, delegating unclaimed keys onward (depends on T012)
+- [ ] T014 Implement the `global`-scope keybind capture wrapper in `src/core/keybinds/GlobalScope.tsx`, always mounted at the app root, receiving only keys no more specific scope claimed (depends on T013) — completes the three-level chain
+- [ ] T015 [P] Implement the `DashboardShell` component skeleton (grid/sidebar/statusbar/overlay regions, no navigation logic yet) in `src/core/DashboardShell.tsx` (FR-001; depends on T006, T007)
+- [ ] T016 [P] Implement the YAML+Zod host config loader in `src/core/config.ts` (which extensions are enabled) per the constitution's "Zod-validated YAML is the only supported configuration format"
+- [ ] T017 [P] Unit test keybind-chain precedence and delegation (focused claims → local never sees it; local claims → global never sees it; unclaimed key reaches global) in `tests/unit/keybind-chain.test.ts` (depends on T012–T014)
+- [ ] T018 [P] Unit test manifest validation (valid manifest passes; missing `activationEvents`/malformed `id` rejected; code is never imported for an invalid manifest) in `tests/unit/manifest-validation.test.ts` (depends on T008, T009)
+- [ ] T019 [P] Contract test for the extension manifest schema in `tests/contract/extension-manifest.test.ts` against `contracts/extension-manifest.md`'s concrete Tasks manifest instance (depends on T008)
 
 **Checkpoint**: Foundation ready — all user stories can now proceed.
 
@@ -65,12 +66,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 1
 
-- [ ] T019 [P] [US1] Integration test: launching with zero extensions renders all shell regions and the quit key exits cleanly, in `tests/integration/dashboard-shell.test.ts` (uses `@opentui/react`'s `testRender`/`mockInput`)
+- [ ] T020 [P] [US1] Integration test: launching with zero extensions renders all shell regions and the quit key exits cleanly, in `tests/integration/dashboard-shell.test.ts` (uses `@opentui/react`'s `testRender`/`mockInput`)
 
 ### Implementation for User Story 1
 
-- [ ] T020 [US1] Implement `src/cli/index.ts`: load config (T015), bootstrap renderer+slot registry (T005, T006), mount `DashboardShell` (T014) wrapped in `GlobalScope` (T013), register the quit command at global scope (FR-001; depends on T005, T006, T013, T014, T015)
-- [ ] T021 [P] [US1] Add `fixtures/no-extensions.yaml` config fixture (empty extensions list) for quickstart Scenario 1
+- [ ] T021 [US1] Implement `src/cli/index.ts`: load config (T016), bootstrap renderer+slot registry (T005, T006), mount `DashboardShell` (T015) wrapped in `GlobalScope` (T014), register the quit command at global scope (FR-001; depends on T005, T006, T014, T015, T016)
+- [ ] T022 [P] [US1] Add `fixtures/no-extensions.yaml` config fixture (empty extensions list) for quickstart Scenario 1
 
 **Checkpoint**: User Story 1 fully functional and independently testable — MVP.
 
@@ -84,18 +85,18 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 2
 
-- [ ] T022 [P] [US2] Integration test: add → peek count updates → focus view lists it → mark complete → relaunch → still present, in `tests/integration/tasks-end-to-end.test.ts`
-- [ ] T023 [P] [US2] Unit test: task-store CRUD, sort order (due-date-first, then creation time, completed last), and validation (empty/whitespace title rejected on create and edit, invalid due date rejected without mutating existing state) in `tests/unit/task-store.test.ts`
+- [ ] T023 [P] [US2] Integration test: add → peek count updates → focus view lists it → mark complete → delete a task (removed from both peek and focus views immediately, stays gone after relaunch) → toggle hide-completed (completed tasks hidden, then shown again) → relaunch → remaining tasks and their state persisted, in `tests/integration/tasks-end-to-end.test.ts` (FR-009, FR-010, FR-016, FR-017)
+- [ ] T024 [P] [US2] Unit test: task-store CRUD (add/edit/delete/toggle-complete), sort order (due-date-first, then creation time, completed last), hide-completed toggle filtering, and validation (empty/whitespace title rejected on create and edit, invalid due date rejected without mutating existing state) in `tests/unit/task-store.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T024 [P] [US2] Define the `Task` type and field validators in `src/extensions/tasks/task-schema.ts` per `data-model.md` (title, completed, createdAt, optional dueDate; FR-015, FR-019, FR-020)
-- [ ] T025 [US2] Implement `src/extensions/tasks/task-store.ts`: add/edit/delete/toggle-complete against `StorageAPI` (T010), plus the sort function (due date closest-first → undated by creation time → completed always last) (FR-007–FR-010, FR-016–FR-020; depends on T024, T010) — human review pass recommended to confirm edge-case coverage against FR-015/FR-019/FR-020
-- [ ] T026 [P] [US2] Create `src/extensions/tasks/extension.json` per `contracts/extension-manifest.md`'s concrete Tasks instance
-- [ ] T027 [US2] Implement `src/extensions/tasks/PeekView.tsx`: live task-count summary for the dashboard tile (FR-011; depends on T025)
-- [ ] T028 [US2] Implement `src/extensions/tasks/FocusView.tsx`: full sorted task list with completion state and due date, add/edit/delete/toggle-complete commands, and the hide-completed toggle, wired through `LocalScope` (T012) (FR-008, FR-009, FR-016–FR-020; depends on T025, T012) — human review pass recommended since this is the primary local-keybind integration point
-- [ ] T029 [US2] Implement `src/extensions/tasks/index.tsx`: register the Tasks extension's manifest-declared peek/focus views and commands with the slot registry and loader (depends on T026, T027, T028, T009)
-- [ ] T030 [P] [US2] Add `fixtures/tasks-only.yaml` config fixture (Tasks extension only) for quickstart Scenario 2
+- [ ] T025 [P] [US2] Define the `Task` type and field validators in `src/extensions/tasks/task-schema.ts` per `data-model.md` (title, completed, createdAt, optional dueDate; FR-015, FR-019, FR-020)
+- [ ] T026 [US2] Implement `src/extensions/tasks/task-store.ts`: add/edit/delete/toggle-complete against `StorageAPI` (T010), plus the sort function (due date closest-first → undated by creation time → completed always last) (FR-007–FR-010, FR-016–FR-020; depends on T025, T010) — human review pass recommended to confirm edge-case coverage against FR-015/FR-019/FR-020
+- [ ] T027 [P] [US2] Create `src/extensions/tasks/extension.json` per `contracts/extension-manifest.md`'s concrete Tasks instance
+- [ ] T028 [US2] Implement `src/extensions/tasks/PeekView.tsx`: live task-count summary for the dashboard tile (FR-011; depends on T026)
+- [ ] T029 [US2] Implement `src/extensions/tasks/FocusView.tsx`: full sorted task list with completion state and due date, add/edit/delete/toggle-complete commands, and the hide-completed toggle, wired through `LocalScope` (T013) (FR-008, FR-009, FR-016–FR-020; depends on T026, T013) — human review pass recommended since this is the primary local-keybind integration point
+- [ ] T030 [US2] Implement `src/extensions/tasks/index.tsx`: register the Tasks extension's manifest-declared peek/focus views and commands with the slot registry and loader (depends on T027, T028, T029, T009)
+- [ ] T031 [P] [US2] Add `fixtures/tasks-only.yaml` config fixture (Tasks extension only) for quickstart Scenario 2
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 
@@ -109,12 +110,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 3
 
-- [ ] T031 [P] [US3] Integration test: activation key swaps to the framed Tasks focus view, back key returns to the dashboard, each direction in ≤2 keypresses (SC-003), in `tests/integration/focus-navigation.test.ts`
+- [ ] T032 [P] [US3] Integration test: activation key swaps to the framed Tasks focus view, back key returns to the dashboard, each direction in ≤2 keypresses (SC-003), in `tests/integration/focus-navigation.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T032 [US3] Wire grid-tile activation → focus-view swap and back-key → dashboard-return navigation into `DashboardShell` (FR-012; depends on T014, T029)
-- [ ] T033 [P] [US3] Implement `src/core/FocusFrame.tsx`: framed/highlighted visual treatment for any extension's focus view, no animation, reused by Tasks (FR-013; depends on T032)
+- [ ] T033 [US3] Wire grid-tile activation → focus-view swap and back-key → dashboard-return navigation into `DashboardShell` (FR-012; depends on T015, T030)
+- [ ] T034 [P] [US3] Implement `src/core/FocusFrame.tsx`: framed/highlighted visual treatment for any extension's focus view, no animation, reused by Tasks (FR-013; depends on T033)
 
 **Checkpoint**: User Stories 1–3 all work independently.
 
@@ -128,12 +129,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 4
 
-- [ ] T034 [P] [US4] Integration test: `tasks.add` key triggers inside the Tasks focus view, does NOT trigger on the dashboard, and an unclaimed key still reaches global scope (SC-004), in `tests/integration/keybind-scoping.test.ts`
+- [ ] T035 [P] [US4] Integration test: `tasks.add` key triggers inside the Tasks focus view, does NOT trigger on the dashboard, and an unclaimed key still reaches global scope (SC-004), in `tests/integration/keybind-scoping.test.ts`
 
 ### Implementation for User Story 4
 
-- [ ] T035 [US4] Confirm/adjust Tasks' local commands (add/delete/edit/toggle-complete/hide-completed) are registered exclusively through `LocalScope` (T012), mounted only while the Tasks focus view is active (depends on T012, T028)
-- [ ] T036 [US4] Confirm/adjust global commands (quit, back) are registered exclusively through `GlobalScope` (T013) and never collide with Tasks' local keybinds (depends on T013, T032)
+- [ ] T036 [US4] Confirm/adjust Tasks' local commands (add/delete/edit/toggle-complete/hide-completed) are registered exclusively through `LocalScope` (T013), mounted only while the Tasks focus view is active (depends on T013, T029)
+- [ ] T037 [US4] Confirm/adjust global commands (quit, back) are registered exclusively through `GlobalScope` (T014) and never collide with Tasks' local keybinds (depends on T014, T033)
 
 **Checkpoint**: All four user stories independently functional — SC-004 verified.
 
@@ -143,10 +144,10 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 **Purpose**: Verify the fault-isolation guarantee and close out documentation/validation
 
-- [ ] T037 [P] Integration test: a broken Tasks `extension.json` leaves the dashboard, other tiles, status bar, and quit fully usable, with the Tasks tile showing a load-error state (SC-005), in `tests/integration/fault-isolation.test.ts`, plus `fixtures/tasks-broken-manifest.yaml`
-- [ ] T038 [P] Write `README.md`: install, `bin/mycli` launch instructions, `node --test` usage
-- [ ] T039 Run all 6 `quickstart.md` scenarios end-to-end and confirm expected outcomes
-- [ ] T040 [P] Cleanup pass across `src/core/` and `src/extensions/tasks/` (dead code, consistent naming, no leftover TODOs)
+- [ ] T038 [P] Integration test: a broken Tasks `extension.json` leaves the dashboard, other tiles, status bar, and quit fully usable, with the Tasks tile showing a load-error state (SC-005), in `tests/integration/fault-isolation.test.ts`, plus `fixtures/tasks-broken-manifest.yaml`
+- [ ] T039 [P] Write `README.md`: install, `bin/mycli` launch instructions, `node --test` usage
+- [ ] T040 Run all 6 `quickstart.md` scenarios end-to-end and confirm expected outcomes
+- [ ] T041 [P] Cleanup pass across `src/core/` and `src/extensions/tasks/` (dead code, consistent naming, no leftover TODOs)
 
 ---
 
@@ -163,13 +164,13 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 - **US1 (P1)**: No dependency on other stories — can ship alone as the MVP shell
 - **US2 (P1)**: No functional dependency on US1, but shares `DashboardShell`/renderer/loader from Foundational; independently testable per its own Independent Test
-- **US3 (P2)**: Builds on US2's Tasks focus view existing (T029) to have something to navigate to, but the navigation mechanism itself is generic (any extension's focus view)
-- **US4 (P2)**: Builds on US2's Tasks local commands (T028) and US3's navigation (T032) existing, to verify scoping against a real local/global command pair
+- **US3 (P2)**: Builds on US2's Tasks focus view existing (T030) to have something to navigate to, but the navigation mechanism itself is generic (any extension's focus view)
+- **US4 (P2)**: Builds on US2's Tasks local commands (T029) and US3's navigation (T033) existing, to verify scoping against a real local/global command pair
 
 ### Parallel Opportunities
 
 - All `[P]` Setup tasks (T002–T004) run in parallel
-- Within Foundational: T007, T008 in parallel after T006/T005; T014, T015 in parallel after T006; T016–T018 in parallel once their dependencies land
+- Within Foundational: T007, T008 in parallel after T006/T005; T011 in parallel with T012 once T010 lands; T015, T016 in parallel after T006; T017–T019 in parallel once their dependencies land
 - Once Foundational completes, US1 and US2 implementation can proceed in parallel by different contributors (US3/US4 need US2's Tasks views/commands to exist first, so they trail US2)
 - All test tasks within a story marked `[P]` can run in parallel with each other
 
@@ -183,6 +184,10 @@ Task: "Implement per-slot error boundary in src/core/ErrorBoundary.tsx"
 Task: "Implement extension manifest Zod schema in src/core/extensions/manifest.ts"
 Task: "Implement DashboardShell skeleton in src/core/DashboardShell.tsx"
 Task: "Implement YAML+Zod config loader in src/core/config.ts"
+
+# After T010 (StorageAPI) lands:
+Task: "Unit test cross-extension StorageAPI isolation in tests/unit/storage-api.test.ts"
+Task: "Implement focused-scope keybind wrapper in src/core/keybinds/FocusedScope.tsx"
 ```
 
 ## Parallel Example: User Story 2
@@ -224,6 +229,6 @@ Task: "Create extension.json manifest in src/extensions/tasks/extension.json"
 
 - `[P]` tasks touch different files with no incomplete-task dependency
 - `[Story]` label maps a task to its user story for traceability
-- Constitution Principles I–V are enforced entirely within the Foundational phase (T005–T013); every user story builds on top of an already-compliant core
+- Constitution Principles I–V are enforced entirely within the Foundational phase (T005–T019); every user story builds on top of an already-compliant core
 - Commit after each task or logical group
 - Stop at any checkpoint to validate a story independently

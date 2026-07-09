@@ -39,6 +39,9 @@ A user wants to track to-dos without leaving the terminal. They add a task, see 
 2. **Given** at least one task exists, **When** the user opens the Tasks focus view, **Then** all tasks are listed with their completion state visible, ordered by due date (closest first), then tasks with no due date by creation time, with completed tasks always listed last.
 3. **Given** a task is open in the focus view, **When** the user marks it complete, **Then** its state updates immediately in both focus and peek views.
 4. **Given** tasks were added in a previous session, **When** the user relaunches the app, **Then** the same tasks and completion states are restored.
+5. **Given** a task exists in the focus view, **When** the user triggers "delete task" on it, **Then** it is removed immediately from both the focus view and the peek tile's summary count, and stays removed after relaunching the app.
+6. **Given** a task exists, **When** the user triggers "edit task" and changes its title and/or due date, **Then** the change is reflected immediately and persists after relaunching the app.
+7. **Given** one or more tasks are marked complete, **When** the user toggles "hide completed", **Then** completed tasks disappear from the focus view; toggling again restores them in their sorted position.
 
 ---
 
