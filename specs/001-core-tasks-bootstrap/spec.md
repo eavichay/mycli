@@ -78,6 +78,7 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - What happens when two keybinds at different scopes (local vs. global) both claim the same key? The more specific (local/focused) scope wins; the global handler never receives the key.
 - What happens when the Tasks extension fails to load (e.g., manifest error)? The dashboard still renders; the Tasks tile shows a load-error state instead of crashing the whole app.
 - What happens when the user edits a task's title to empty or whitespace-only? The edit is rejected and the task's original title is retained.
+- What happens when the user enters an invalid or unparseable due date? The action is rejected with an error; the task is created/kept without the invalid due date (or retains its previous due date on edit).
 
 ## Clarifications
 
@@ -87,6 +88,7 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - Q: What order should tasks appear in within the Tasks focus view? → A: Tasks with a due date sort closest-first; tasks without a due date follow, ordered by creation time; completed tasks always sort last. A show/hide-completed toggle is available in the focus view.
 - Q: Can users edit an existing task's title or due date after creation? → A: Yes — both title and due date are editable via keyboard.
 - Q: Should editing a task's title to empty/whitespace-only be rejected like empty-title creation? → A: Yes — rejected, original title is kept.
+- Q: What happens when a user enters an invalid/unparseable due date while adding or editing a task? → A: Rejected — an error is shown and the task is saved/kept without the invalid due date (previous due date retained on edit).
 
 ## Requirements *(mandatory)*
 
@@ -111,6 +113,7 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - **FR-017**: Users MUST be able to toggle the visibility of completed tasks in the focus view.
 - **FR-018**: Users MUST be able to edit an existing task's title and/or due date via keyboard from the Tasks focus view, with the change reflected immediately and persisted across restarts.
 - **FR-019**: System MUST reject an edit that would set a task's title to empty or whitespace-only, leaving the task's original title unchanged.
+- **FR-020**: System MUST reject an invalid or unparseable due date entered when adding or editing a task, showing an error and leaving the task without a due date (on add) or with its previous due date unchanged (on edit).
 
 ### Key Entities
 
