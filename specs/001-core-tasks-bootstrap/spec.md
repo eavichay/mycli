@@ -36,7 +36,7 @@ A user wants to track to-dos without leaving the terminal. They add a task, see 
 **Acceptance Scenarios**:
 
 1. **Given** the dashboard is showing the Tasks peek tile, **When** the user triggers "add task" and types a title, **Then** the new task appears in the peek tile's summary count.
-2. **Given** at least one task exists, **When** the user opens the Tasks focus view, **Then** all tasks are listed with their completion state visible.
+2. **Given** at least one task exists, **When** the user opens the Tasks focus view, **Then** all tasks are listed with their completion state visible, ordered by due date (closest first), then tasks with no due date by creation time, with completed tasks always listed last.
 3. **Given** a task is open in the focus view, **When** the user marks it complete, **Then** its state updates immediately in both focus and peek views.
 4. **Given** tasks were added in a previous session, **When** the user relaunches the app, **Then** the same tasks and completion states are restored.
 
@@ -77,6 +77,16 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - What happens when task storage is missing or corrupted on launch? The extension starts with an empty task list rather than crashing the app.
 - What happens when two keybinds at different scopes (local vs. global) both claim the same key? The more specific (local/focused) scope wins; the global handler never receives the key.
 - What happens when the Tasks extension fails to load (e.g., manifest error)? The dashboard still renders; the Tasks tile shows a load-error state instead of crashing the whole app.
+- What happens when the user edits a task's title to empty or whitespace-only? The edit is rejected and the task's original title is retained.
+
+## Clarifications
+
+### Session 2026-07-09
+
+- Q: Is deleting/removing a task in scope for this feature? → A: Yes — users can delete a task via keyboard
+- Q: What order should tasks appear in within the Tasks focus view? → A: Tasks with a due date sort closest-first; tasks without a due date follow, ordered by creation time; completed tasks always sort last. A show/hide-completed toggle is available in the focus view.
+- Q: Can users edit an existing task's title or due date after creation? → A: Yes — both title and due date are editable via keyboard.
+- Q: Should editing a task's title to empty/whitespace-only be rejected like empty-title creation? → A: Yes — rejected, original title is kept.
 
 ## Requirements *(mandatory)*
 
@@ -88,8 +98,8 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - **FR-004**: System MUST support at least one extension rendering into its peek slot without interfering with other slots' rendering.
 - **FR-005**: System MUST provide each extension with a private, persistent storage area that survives app restarts and is not shared with other extensions.
 - **FR-006**: System MUST resolve keypresses in a fixed order: the currently focused UI element first, then the active extension's local handlers, then global (app-wide) handlers — stopping at the first scope that handles the key.
-- **FR-007**: Users MUST be able to add a new task with a title via keyboard input.
-- **FR-008**: Users MUST be able to view the full list of tasks, including each task's completion state, in a dedicated detailed view.
+- **FR-007**: Users MUST be able to add a new task with a title via keyboard input, optionally specifying a due date.
+- **FR-008**: Users MUST be able to view the full list of tasks, including each task's completion state and due date (if set), in a dedicated detailed view, ordered by due date (closest first), then undated tasks by creation time, with completed tasks always listed last.
 - **FR-009**: Users MUST be able to mark a task complete or incomplete via keyboard.
 - **FR-010**: System MUST persist task data so it is available again after the app is closed and reopened.
 - **FR-011**: System MUST display a live summary (e.g., counts) of tasks in the compact dashboard tile without requiring the user to open the detailed view.
@@ -97,10 +107,14 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - **FR-013**: System MUST visually distinguish the detailed/focused view from the dashboard using a framed or highlighted presentation, without relying on animation.
 - **FR-014**: System MUST continue operating (rendering the dashboard and other extensions) if a single extension fails to load or throws an error, isolating the failure to that extension's tile.
 - **FR-015**: System MUST reject task creation attempts with an empty or whitespace-only title.
+- **FR-016**: Users MUST be able to delete a task via keyboard from the Tasks focus view, with the deletion reflected immediately in both the focus view and the peek tile's summary count, and persisted across restarts.
+- **FR-017**: Users MUST be able to toggle the visibility of completed tasks in the focus view.
+- **FR-018**: Users MUST be able to edit an existing task's title and/or due date via keyboard from the Tasks focus view, with the change reflected immediately and persisted across restarts.
+- **FR-019**: System MUST reject an edit that would set a task's title to empty or whitespace-only, leaving the task's original title unchanged.
 
 ### Key Entities
 
-- **Task**: A single to-do item. Attributes: title, completion state, created timestamp. Owned exclusively by the Tasks extension's storage.
+- **Task**: A single to-do item. Attributes: title, completion state, created timestamp, optional due date. Owned exclusively by the Tasks extension's storage.
 - **Extension Manifest**: Describes an extension's identity and capabilities (views offered, commands, storage needs) so the framework can load it without running its code first.
 - **Dashboard Slot**: A named region of the screen (e.g., grid tile, sidebar, status bar) that a loaded extension's view can be registered into.
 - **Keybind Scope**: One of three levels (focused element, local/active-extension, global) used to resolve which handler responds to a keypress.
@@ -121,4 +135,4 @@ A user presses a key while inside the Tasks focus view that has a meaning specif
 - Only a single user operates the app at a time on a single machine; multi-user or multi-device sync is out of scope.
 - No other extensions (Notes, Agent sidebar, Google integration) are required to be functional for this feature to be considered complete — the dashboard must simply tolerate their absence.
 - The "focus" visual treatment (framed/highlighted, no animation) established here is the pattern all future extensions will reuse.
-- Task titles are plain text; rich formatting, attachments, and due dates are out of scope for this feature.
+- Task titles are plain text; rich formatting and attachments are out of scope for this feature. Due dates are supported as an optional, unformatted field used only for sorting — reminders/notifications based on due dates are out of scope.
