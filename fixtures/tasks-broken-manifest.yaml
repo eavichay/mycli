@@ -1,0 +1,9 @@
+# For manual quickstart validation (Scenario 5): enable Tasks as normal here,
+# then deliberately corrupt src/extensions/tasks/extension.json (e.g. delete
+# the required "activationEvents" field) before launching with this config,
+# to observe the dashboard degrade only the Tasks tile to a load-error state.
+# Automated coverage of this behavior lives in
+# tests/integration/fault-isolation.test.tsx, which injects a broken manifest
+# directly rather than mutating the real extension.json on disk.
+extensions:
+  - tasks

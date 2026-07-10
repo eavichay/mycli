@@ -1,0 +1,15 @@
+{
+  "id": "tasks",
+  "name": "Tasks",
+  "version": "1.0.0",
+  "views": { "peek": "PeekView", "focus": "FocusView" },
+  "commands": [
+    { "id": "tasks.add", "keybind": "a" },
+    { "id": "tasks.delete", "keybind": "d" },
+    { "id": "tasks.edit", "keybind": "e" },
+    { "id": "tasks.toggleComplete", "keybind": "space" },
+    { "id": "tasks.toggleShowCompleted", "keybind": "c" }
+  ],
+  "activationEvents": ["onSlot:grid"],
+  "storage": true
+}

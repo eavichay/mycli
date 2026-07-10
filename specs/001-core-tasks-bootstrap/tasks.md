@@ -23,10 +23,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 **Purpose**: Project initialization per plan.md's Technical Context
 
-- [ ] T001 Update `package.json`: add `@opentui/core`, `@opentui/react`, `zod`, `yaml` as dependencies, set `"engines": {"node": ">=26.3.0"}`, add a `"test": "node --test"` script
-- [ ] T002 [P] Create the source/test directory skeleton per plan.md: `src/core/keybinds/`, `src/core/storage/`, `src/core/extensions/`, `src/extensions/tasks/`, `src/cli/`, `tests/unit/`, `tests/integration/`, `tests/contract/`
-- [ ] T003 [P] Add `tsconfig.json` for type-checking only (no emit — Node's native type-stripping runs `.ts` directly, no separate `tsc` build step)
-- [ ] T004 [P] Create `bin/mycli` bash wrapper that launches `node --experimental-ffi src/cli/index.ts "$@"` (flag MUST NOT be exposed to end users directly)
+- [X] T001 Update `package.json`: add `@opentui/core`, `@opentui/react`, `zod`, `yaml` as dependencies, set `"engines": {"node": ">=26.3.0"}`, add a `"test": "node --test"` script — implemented via `tsx` (see note below)
+- [X] T002 [P] Create the source/test directory skeleton per plan.md: `src/core/keybinds/`, `src/core/storage/`, `src/core/extensions/`, `src/extensions/tasks/`, `src/cli/`, `tests/unit/`, `tests/integration/`, `tests/contract/`
+- [X] T003 [P] Add `tsconfig.json` for type-checking only (no emit — Node's native type-stripping runs `.ts` directly, no separate `tsc` build step)
+- [X] T004 [P] Create `bin/mycli` bash wrapper that launches `node --experimental-ffi src/cli/index.ts "$@"` (flag MUST NOT be exposed to end users directly) — launches via `tsx`'s CLI entry, see note below
+
+**Implementation note (discovered during T001-T004, revised after T012-T017)**: Node's native type-stripping (`--experimental-strip-types`) only erases TypeScript-only syntax — it cannot transform JSX, so running `.tsx` directly under plain `node` throws a `SyntaxError`. The `tsx` CLI (`node_modules/.bin/tsx`) fixes JSX but was found to break OpenTUI's native FFI renderer entirely (`"OpenTUI native FFI is not available for this runtime yet"` — confirmed via a minimal repro: identical code succeeds under plain `node --experimental-ffi`, fails under the `tsx` CLI). The working combination, verified end-to-end (real renderer, real JSX, `node --test`): **`node --experimental-ffi --import tsx/esm`** — using `tsx`'s loader hook directly rather than its CLI wrapper avoids whatever the CLI does that breaks FFI detection. `bin/mycli`, `npm start`, and `npm test` all use this form. One caveat: this loader defaults to the classic JSX runtime rather than honoring `tsconfig.json`'s `"jsx": "react-jsx"`, so every `.tsx` file needs an explicit `import React from "react"`.
 
 **Checkpoint**: Project scaffolding ready.
 
@@ -38,21 +40,21 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Implement single-renderer bootstrap in `src/core/renderer.ts` — one `createCliRenderer()` call plus `createRoot()`, exported for the CLI entrypoint only (Principle I)
-- [ ] T006 Implement slot registry and `AppContext`/`Slots` types in `src/core/slots.ts` using `createReactSlotRegistry<Slots, AppContext>` with `grid`, `sidebar`, `statusbar`, `overlay` slots (FR-001, FR-003; depends on T005)
-- [ ] T007 [P] Implement a per-slot React error boundary in `src/core/ErrorBoundary.tsx`, wired to each `<Slot>`'s `pluginFailurePlaceholder` so a render exception degrades only that extension's tile (Principle V, FR-014; depends on T006)
-- [ ] T008 [P] Implement the extension manifest Zod schema in `src/core/extensions/manifest.ts` per `contracts/extension-manifest.md`
-- [ ] T009 Implement the manifest-first lazy extension loader in `src/core/extensions/loader.ts` — validates `extension.json` via T008 before any `import()`, gates the `import()` on declared `activationEvents`, and catches load/import failures into a load-error state (Principle II, Principle V, FR-002, FR-014; depends on T008)
-- [ ] T010 Implement `StorageAPI` in `src/core/storage/StorageAPI.ts` — `get`/`set`/`delete`/`list`, resolving `<data-root>/extensions/<id>/` internally, never exposing a path to callers; missing/corrupted backing file resolves to "no data" instead of throwing (Principle III, FR-005; per `contracts/storage-api.md`)
-- [ ] T011 [P] Unit test: two differently-scoped `StorageAPI` instances (e.g. `"tasks"` and `"notes"`) cannot read or write each other's keys, and a missing/corrupted backing file resolves to empty rather than throwing, in `tests/unit/storage-api.test.ts` (Principle III, FR-005; depends on T010)
-- [ ] T012 Implement the `focused`-scope keybind capture wrapper in `src/core/keybinds/FocusedScope.tsx` using `useKeyboard`, returning claim/delegate (Principle IV, FR-006; per `contracts/keybind-chain.md`)
-- [ ] T013 Implement the `local`-scope keybind capture wrapper in `src/core/keybinds/LocalScope.tsx`, only mounted while an extension's focus view is active, delegating unclaimed keys onward (depends on T012)
-- [ ] T014 Implement the `global`-scope keybind capture wrapper in `src/core/keybinds/GlobalScope.tsx`, always mounted at the app root, receiving only keys no more specific scope claimed (depends on T013) — completes the three-level chain
-- [ ] T015 [P] Implement the `DashboardShell` component skeleton (grid/sidebar/statusbar/overlay regions, no navigation logic yet) in `src/core/DashboardShell.tsx` (FR-001; depends on T006, T007)
-- [ ] T016 [P] Implement the YAML+Zod host config loader in `src/core/config.ts` (which extensions are enabled) per the constitution's "Zod-validated YAML is the only supported configuration format"
-- [ ] T017 [P] Unit test keybind-chain precedence and delegation (focused claims → local never sees it; local claims → global never sees it; unclaimed key reaches global) in `tests/unit/keybind-chain.test.ts` (depends on T012–T014)
-- [ ] T018 [P] Unit test manifest validation (valid manifest passes; missing `activationEvents`/malformed `id` rejected; code is never imported for an invalid manifest) in `tests/unit/manifest-validation.test.ts` (depends on T008, T009)
-- [ ] T019 [P] Contract test for the extension manifest schema in `tests/contract/extension-manifest.test.ts` against `contracts/extension-manifest.md`'s concrete Tasks manifest instance (depends on T008)
+- [X] T005 Implement single-renderer bootstrap in `src/core/renderer.ts` — one `createCliRenderer()` call plus `createRoot()`, exported for the CLI entrypoint only (Principle I)
+- [X] T006 Implement slot registry and `HostContext`/`Slots` types in `src/core/slots.ts` using `createReactSlotRegistry<Slots, HostContext>` with `grid`, `sidebar`, `statusbar`, `overlay` slots (FR-001, FR-003; depends on T005) — named `HostContext` rather than `AppContext` to avoid colliding with `@opentui/react`'s own internal `AppContext` export
+- [X] T007 [P] ~~Implement a per-slot React error boundary~~ — de-scoped: `@opentui/react`'s `<Slot>` already wraps every plugin's rendered node in its own internal `PluginErrorBoundary`, driven by the `pluginFailurePlaceholder` prop (confirmed by reading `node_modules/@opentui/react/index.js`). Folded into `DashboardShell` (T015) instead of a separate component (Principle V, FR-014)
+- [X] T008 [P] Implement the extension manifest Zod schema in `src/core/extensions/manifest.ts` per `contracts/extension-manifest.md`
+- [X] T009 Implement the manifest-first lazy extension loader in `src/core/extensions/loader.ts` — validates `extension.json` via T008 before any `import()`, gates the `import()` on declared `activationEvents`, and catches load/import failures into a load-error state (Principle II, Principle V, FR-002, FR-014; depends on T008)
+- [X] T010 Implement `StorageAPI` in `src/core/storage/StorageAPI.ts` — `get`/`set`/`delete`/`list`, resolving `<data-root>/extensions/<id>/` internally, never exposing a path to callers; missing/corrupted backing file resolves to "no data" instead of throwing (Principle III, FR-005; per `contracts/storage-api.md`)
+- [X] T011 [P] Unit test: two differently-scoped `StorageAPI` instances (e.g. `"tasks"` and `"notes"`) cannot read or write each other's keys, and a missing/corrupted backing file resolves to empty rather than throwing, in `tests/unit/storage-api.test.ts` (Principle III, FR-005; depends on T010) — 3/3 passing
+- [X] T012 Implement the `focused`-scope keybind capture wrapper in `src/core/keybinds/FocusedScope.tsx` using `useKeyboard`, returning claim/delegate (Principle IV, FR-006; per `contracts/keybind-chain.md`)
+- [X] T013 Implement the `local`-scope keybind capture wrapper in `src/core/keybinds/LocalScope.tsx`, only mounted while an extension's focus view is active, delegating unclaimed keys onward (depends on T012)
+- [X] T014 Implement the `global`-scope keybind capture wrapper in `src/core/keybinds/GlobalScope.tsx`, always mounted at the app root, receiving only keys no more specific scope claimed (depends on T013) — completes the three-level chain. Implemented as a single shared `KeybindDispatcherProvider` (one root `useKeyboard` subscription that routes to registered focused/local/global handlers in fixed order) exported from this file, consumed by FocusedScope/LocalScope via `useScopeCommands`
+- [X] T015 [P] Implement the `DashboardShell` component skeleton (grid/sidebar/statusbar/overlay regions, no navigation logic yet) in `src/core/DashboardShell.tsx` (FR-001; depends on T006, T007)
+- [X] T016 [P] Implement the YAML+Zod host config loader in `src/core/config.ts` (which extensions are enabled) per the constitution's "Zod-validated YAML is the only supported configuration format"
+- [X] T017 [P] Unit test keybind-chain precedence and delegation (focused claims → local never sees it; local claims → global never sees it; unclaimed key reaches global) in `tests/unit/keybind-chain.test.tsx` (depends on T012–T014) — `.tsx` not `.ts` since it needs JSX; 4/4 passing
+- [X] T018 [P] Unit test manifest validation (valid manifest passes; missing `activationEvents`/malformed `id` rejected; code is never imported for an invalid manifest) in `tests/unit/manifest-validation.test.ts` (depends on T008, T009) — 6/6 passing (one extra test beyond the ones listed here: import-once-per-activation-event)
+- [X] T019 [P] Contract test for the extension manifest schema in `tests/contract/extension-manifest.test.ts` against `contracts/extension-manifest.md`'s concrete Tasks manifest instance (depends on T008) — 1/1 passing
 
 **Checkpoint**: Foundation ready — all user stories can now proceed.
 
@@ -66,12 +68,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 1
 
-- [ ] T020 [P] [US1] Integration test: launching with zero extensions renders all shell regions and the quit key exits cleanly, in `tests/integration/dashboard-shell.test.ts` (uses `@opentui/react`'s `testRender`/`mockInput`)
+- [X] T020 [P] [US1] Integration test: launching with zero extensions renders all shell regions and the quit key exits cleanly, in `tests/integration/dashboard-shell.test.tsx` (uses `@opentui/core/testing`'s `createTestRenderer`) — 2/2 passing
 
 ### Implementation for User Story 1
 
-- [ ] T021 [US1] Implement `src/cli/index.ts`: load config (T016), bootstrap renderer+slot registry (T005, T006), mount `DashboardShell` (T015) wrapped in `GlobalScope` (T014), register the quit command at global scope (FR-001; depends on T005, T006, T014, T015, T016)
-- [ ] T022 [P] [US1] Add `fixtures/no-extensions.yaml` config fixture (empty extensions list) for quickstart Scenario 1
+- [X] T021 [US1] Implement `src/cli/index.ts`: load config (T016), bootstrap renderer+slot registry (T005, T006), mount `DashboardShell` (T015) wrapped in `GlobalScope` (T014), register the quit command at global scope (FR-001; depends on T005, T006, T014, T015, T016) — via `src/cli/App.tsx` + `src/cli/index.ts`
+- [X] T022 [P] [US1] Add `fixtures/no-extensions.yaml` config fixture (empty extensions list) for quickstart Scenario 1
 
 **Checkpoint**: User Story 1 fully functional and independently testable — MVP.
 
@@ -85,18 +87,18 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 2
 
-- [ ] T023 [P] [US2] Integration test: add → peek count updates → focus view lists it → mark complete → delete a task (removed from both peek and focus views immediately, stays gone after relaunch) → toggle hide-completed (completed tasks hidden, then shown again) → relaunch → remaining tasks and their state persisted, in `tests/integration/tasks-end-to-end.test.ts` (FR-009, FR-010, FR-016, FR-017)
-- [ ] T024 [P] [US2] Unit test: task-store CRUD (add/edit/delete/toggle-complete), sort order (due-date-first, then creation time, completed last), hide-completed toggle filtering, and validation (empty/whitespace title rejected on create and edit, invalid due date rejected without mutating existing state) in `tests/unit/task-store.test.ts`
+- [X] T023 [P] [US2] Integration test: add → peek count updates → focus view lists it → mark complete → delete a task (removed from both peek and focus views immediately, stays gone after relaunch) → toggle hide-completed (completed tasks hidden, then shown again) → relaunch → remaining tasks and their state persisted, in `tests/integration/tasks-end-to-end.test.tsx` (FR-009, FR-010, FR-016, FR-017) — 3/3 passing (split across 3 focused tests rather than one combined scenario)
+- [X] T024 [P] [US2] Unit test: task-store CRUD (add/edit/delete/toggle-complete), sort order (due-date-first, then creation time, completed last), hide-completed toggle filtering, and validation (empty/whitespace title rejected on create and edit, invalid due date rejected without mutating existing state) in `tests/unit/task-store.test.ts` — 10/10 passing
 
 ### Implementation for User Story 2
 
-- [ ] T025 [P] [US2] Define the `Task` type and field validators in `src/extensions/tasks/task-schema.ts` per `data-model.md` (title, completed, createdAt, optional dueDate; FR-015, FR-019, FR-020)
-- [ ] T026 [US2] Implement `src/extensions/tasks/task-store.ts`: add/edit/delete/toggle-complete against `StorageAPI` (T010), plus the sort function (due date closest-first → undated by creation time → completed always last) (FR-007–FR-010, FR-016–FR-020; depends on T025, T010) — human review pass recommended to confirm edge-case coverage against FR-015/FR-019/FR-020
-- [ ] T027 [P] [US2] Create `src/extensions/tasks/extension.json` per `contracts/extension-manifest.md`'s concrete Tasks instance
-- [ ] T028 [US2] Implement `src/extensions/tasks/PeekView.tsx`: live task-count summary for the dashboard tile (FR-011; depends on T026)
-- [ ] T029 [US2] Implement `src/extensions/tasks/FocusView.tsx`: full sorted task list with completion state and due date, add/edit/delete/toggle-complete commands, and the hide-completed toggle, wired through `LocalScope` (T013) (FR-008, FR-009, FR-016–FR-020; depends on T026, T013) — human review pass recommended since this is the primary local-keybind integration point
-- [ ] T030 [US2] Implement `src/extensions/tasks/index.tsx`: register the Tasks extension's manifest-declared peek/focus views and commands with the slot registry and loader (depends on T027, T028, T029, T009)
-- [ ] T031 [P] [US2] Add `fixtures/tasks-only.yaml` config fixture (Tasks extension only) for quickstart Scenario 2
+- [X] T025 [P] [US2] Define the `Task` type and field validators in `src/extensions/tasks/task-schema.ts` per `data-model.md` (title, completed, createdAt, optional dueDate; FR-015, FR-019, FR-020)
+- [X] T026 [US2] Implement `src/extensions/tasks/task-store.ts`: add/edit/delete/toggle-complete against `StorageAPI` (T010), plus the sort function (due date closest-first → undated by creation time → completed always last) (FR-007–FR-010, FR-016–FR-020; depends on T025, T010) — human review pass recommended to confirm edge-case coverage against FR-015/FR-019/FR-020
+- [X] T027 [P] [US2] Create `src/extensions/tasks/extension.json` per `contracts/extension-manifest.md`'s concrete Tasks instance
+- [X] T028 [US2] Implement `src/extensions/tasks/PeekView.tsx`: live task-count summary for the dashboard tile (FR-011; depends on T026) — factored as `createPeekView(store)` closure over a shared `TasksReactiveStore` (`reactive-store.ts`) so peek and focus views stay in sync
+- [X] T029 [US2] Implement `src/extensions/tasks/FocusView.tsx`: full sorted task list with completion state and due date, add/edit/delete/toggle-complete commands, and the hide-completed toggle, wired through `LocalScope` (T013) (FR-008, FR-009, FR-016–FR-020; depends on T026, T013) — human review pass recommended since this is the primary local-keybind integration point. Title/due-date entry uses OpenTUI's native `<input>` component (its own `focused` prop drives imperative `.focus()`/keystroke capture — this is literally the "focused" scope of Principle IV for text entry); only Escape-to-cancel is wired through `useFocusedKeybinds`
+- [X] T030 [US2] Implement `src/extensions/tasks/index.tsx`: register the Tasks extension's manifest-declared peek/focus views and commands with the slot registry and loader (depends on T027, T028, T029, T009)
+- [X] T031 [P] [US2] Add `fixtures/tasks-only.yaml` config fixture (Tasks extension only) for quickstart Scenario 2
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 
@@ -110,12 +112,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 3
 
-- [ ] T032 [P] [US3] Integration test: activation key swaps to the framed Tasks focus view, back key returns to the dashboard, each direction in ≤2 keypresses (SC-003), in `tests/integration/focus-navigation.test.ts`
+- [X] T032 [P] [US3] Integration test: activation key swaps to the framed Tasks focus view, back key returns to the dashboard, each direction in ≤2 keypresses (SC-003), in `tests/integration/focus-navigation.test.tsx` — 1/1 passing (each direction is a single keypress: RETURN / ESCAPE)
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Wire grid-tile activation → focus-view swap and back-key → dashboard-return navigation into `DashboardShell` (FR-012; depends on T015, T030)
-- [ ] T034 [P] [US3] Implement `src/core/FocusFrame.tsx`: framed/highlighted visual treatment for any extension's focus view, no animation, reused by Tasks (FR-013; depends on T033)
+- [X] T033 [US3] Wire grid-tile activation → focus-view swap and back-key → dashboard-return navigation into `DashboardShell` (FR-012; depends on T015, T030) — implemented in `src/cli/App.tsx` (`AppInner`'s `activeExtensionId` state + global `return`/`escape` commands), not inside `DashboardShell` itself, since `DashboardShell` stays a presentational component driven by `activeExtensionId`/`focusContent` props
+- [X] T034 [P] [US3] Implement `src/core/FocusFrame.tsx`: framed/highlighted visual treatment for any extension's focus view, no animation, reused by Tasks (FR-013; depends on T033) — double border box, no animation properties used
 
 **Checkpoint**: User Stories 1–3 all work independently.
 
@@ -129,12 +131,12 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 ### Tests for User Story 4
 
-- [ ] T035 [P] [US4] Integration test: `tasks.add` key triggers inside the Tasks focus view, does NOT trigger on the dashboard, and an unclaimed key still reaches global scope (SC-004), in `tests/integration/keybind-scoping.test.ts`
+- [X] T035 [P] [US4] Integration test: `tasks.add` key triggers inside the Tasks focus view, does NOT trigger on the dashboard, and an unclaimed key still reaches global scope (SC-004), in `tests/integration/keybind-scoping.test.tsx` — 3/3 passing
 
 ### Implementation for User Story 4
 
-- [ ] T036 [US4] Confirm/adjust Tasks' local commands (add/delete/edit/toggle-complete/hide-completed) are registered exclusively through `LocalScope` (T013), mounted only while the Tasks focus view is active (depends on T013, T029)
-- [ ] T037 [US4] Confirm/adjust global commands (quit, back) are registered exclusively through `GlobalScope` (T014) and never collide with Tasks' local keybinds (depends on T014, T033)
+- [X] T036 [US4] Confirm/adjust Tasks' local commands (add/delete/edit/toggle-complete/hide-completed) are registered exclusively through `LocalScope` (T013), mounted only while the Tasks focus view is active (depends on T013, T029) — confirmed via `keybind-scoping.test.tsx`; `FocusView`'s `useLocalKeybinds({...}, mode.kind === "list")` is the only registration point for these five commands
+- [X] T037 [US4] Confirm/adjust global commands (quit, back) are registered exclusively through `GlobalScope` (T014) and never collide with Tasks' local keybinds (depends on T014, T033) — confirmed via `keybind-scoping.test.tsx`'s third test (quit still reaches global scope from within an active focus view for a key Tasks doesn't claim)
 
 **Checkpoint**: All four user stories independently functional — SC-004 verified.
 
@@ -144,10 +146,10 @@ Single project: `src/`, `tests/` at repository root, per plan.md's Project Struc
 
 **Purpose**: Verify the fault-isolation guarantee and close out documentation/validation
 
-- [ ] T038 [P] Integration test: a broken Tasks `extension.json` leaves the dashboard, other tiles, status bar, and quit fully usable, with the Tasks tile showing a load-error state (SC-005), in `tests/integration/fault-isolation.test.ts`, plus `fixtures/tasks-broken-manifest.yaml`
-- [ ] T039 [P] Write `README.md`: install, `bin/mycli` launch instructions, `node --test` usage
-- [ ] T040 Run all 6 `quickstart.md` scenarios end-to-end and confirm expected outcomes
-- [ ] T041 [P] Cleanup pass across `src/core/` and `src/extensions/tasks/` (dead code, consistent naming, no leftover TODOs)
+- [X] T038 [P] Integration test: a broken Tasks `extension.json` leaves the dashboard, other tiles, status bar, and quit fully usable, with the Tasks tile showing a load-error state (SC-005), in `tests/integration/fault-isolation.test.tsx`, plus `fixtures/tasks-broken-manifest.yaml` — 2/2 passing. Required adding `extraGridContent` to `DashboardShell`/`App.tsx` since a manifest/import failure never reaches `registry.register()`, so it has no slot contribution to isolate via `pluginFailurePlaceholder` alone
+- [X] T039 [P] Write `README.md`: install, `bin/mycli` launch instructions, `node --test` usage
+- [X] T040 Run all 6 `quickstart.md` scenarios end-to-end and confirm expected outcomes — validated via their automated headless equivalents rather than an interactive terminal launch (launching the real alternate-screen renderer inside this sandboxed session risks hanging the driving terminal, confirmed during early FFI research): Scenario 1 → `dashboard-shell.test.tsx`, Scenario 2 → `tasks-end-to-end.test.tsx`, Scenario 3 → `focus-navigation.test.tsx`, Scenario 4 → `keybind-scoping.test.tsx`, Scenario 5 → `fault-isolation.test.tsx`, Scenario 6 (delete/edit/due-date sort/hide-completed) → `tasks-end-to-end.test.tsx` + `task-store.test.ts`. All 35 tests pass (`npm test`). Manual `./bin/mycli` verification in a real terminal is still recommended before shipping — noted as a follow-up.
+- [X] T041 [P] Cleanup pass across `src/core/` and `src/extensions/tasks/` (dead code, consistent naming, no leftover TODOs)
 
 ---
 
