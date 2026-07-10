@@ -101,6 +101,7 @@ An extension's manifest (or its runtime customization) attempts to bind a reserv
 - Q: When an extension is focused, do unclaimed global command hints (e.g. "Esc: back") stay visible in the status bar alongside the extension's hints, or does focusing an extension replace the entire global hint set? → A: Merge — unclaimed global hints remain visible alongside the focused extension's hints; only the specific key(s) the extension overrides drop their global hint.
 - Q: Can an extension show a custom message and custom keybind hints at the same time, or does supplying a message replace the hints entirely? → A: Both shown together — message and hints share the status-bar line, whichever fits after truncation.
 - Q: When status-bar content doesn't all fit, should reserved-key hints (e.g. quit) always stay visible, or can they be truncated away like anything else? → A: Reserved-key hints are truncation-exempt — always shown in full; everything else truncates first.
+- Q: After Ctrl+Q becomes the reserved quit key, what happens to the previous `q` binding? → A: `q` becomes free — no longer bound to anything globally; extensions may use it.
 
 ## Requirements *(mandatory)*
 
@@ -114,7 +115,8 @@ An extension's manifest (or its runtime customization) attempts to bind a reserv
 - **FR-006**: System MUST display, for any key bound both globally and by the focused extension (and not reserved), only the focused extension's hint — never both, and never the global one — while that extension is focused.
 - **FR-006a**: System MUST continue displaying the hints for any global command whose key is *not* claimed by the focused extension, merged alongside that extension's hints, for as long as an extension is focused.
 - **FR-007**: System MUST maintain a fixed list of reserved keys that no extension may register a command against, at any scope, via manifest or runtime customization.
-- **FR-008**: System MUST include Ctrl+Q, bound to the quit action, as the first entry in the reserved keys list.
+- **FR-008**: System MUST include Ctrl+Q, bound to the quit action, as the first entry in the reserved keys list, replacing any prior global binding of the quit action to a different key.
+- **FR-008a**: System MUST NOT reserve or globally bind the plain `q` key once Ctrl+Q becomes the quit key — `q` becomes available for extensions to bind their own commands to, like any other non-reserved key.
 - **FR-009**: System MUST reject registration of any extension-declared command bound to a reserved key, while still loading and registering that extension's other valid commands normally.
 - **FR-010**: System MUST ensure that pressing a reserved key always triggers that key's global/reserved action, regardless of which extension is focused or what that extension's manifest declares.
 - **FR-011**: System MUST prevent an extension from displaying a reserved key as one of its own hints in the status bar, even if the extension attempts to via runtime customization.
@@ -144,3 +146,4 @@ An extension's manifest (or its runtime customization) attempts to bind a reserv
 - The reserved keys list starts with just Ctrl+Q (quit) for this feature; the list is designed to be extended later (e.g. for other framework-owned global actions) without requiring extensions to change how they check for or avoid reserved keys.
 - Custom status-bar messages are plain, unformatted text — no rich text, icons, or color customization beyond what the framework's own rendering provides.
 - When a reserved-key conflict is dropped from an extension's manifest at load time, this is treated as a silent, expected accommodation (not a load error/warning surfaced to the end user) — the extension author is expected to discover this during their own development/testing, not the end user at runtime.
+- This feature changes the quit action's global keybinding from `q` (as established in `001-core-tasks-bootstrap`) to `Ctrl+Q`. This is an intentional, user-facing behavior change to align with the terminal-standard convention this feature's reserved-keys mechanism is modeled on; `q` is not preserved as a secondary quit alias.
