@@ -51,7 +51,7 @@ An extension developer wants the status bar to show something more useful than t
 **Acceptance Scenarios**:
 
 1. **Given** an extension is focused and showing its default manifest-derived hints, **When** the extension updates its hints via the context object, **Then** the status bar immediately shows the new hints instead of the manifest defaults.
-2. **Given** an extension has supplied a custom message (not tied to a specific key) via the context object, **When** the user views the status bar, **Then** that message is visible alongside or instead of the keybind hints.
+2. **Given** an extension has supplied a custom message (not tied to a specific key) via the context object, **When** the user views the status bar, **Then** that message is visible alongside the extension's (and any unclaimed global) keybind hints, sharing the available width.
 3. **Given** an extension had customized its hints, **When** the user leaves that extension's focus view, **Then** the customization does not persist — the status bar reverts to global commands (per User Story 1), and re-focusing the extension starts again from its manifest defaults unless the extension re-applies a customization.
 
 ---
@@ -68,6 +68,7 @@ A user is inside an extension's focus view. A key that has a global meaning on t
 
 1. **Given** a key has both a global command and a focused extension's command bound to it, **When** the user is inside that extension's focus view, **Then** the status bar shows only the focused extension's hint for that key.
 2. **Given** the same situation, **When** the user leaves the focus view, **Then** the status bar shows the global command's hint for that key again.
+3. **Given** a global command's key is not claimed by the focused extension (e.g. the back key), **When** the user is inside that extension's focus view, **Then** the status bar still shows that global command's hint alongside the extension's own hints.
 
 ---
 
@@ -88,9 +89,18 @@ An extension's manifest (or its runtime customization) attempts to bind a reserv
 ### Edge Cases
 
 - What happens when an extension supplies hint text long enough that it doesn't fit the status bar? The text is truncated so the status bar never wraps to a second line or pushes other UI regions out of place.
+- What happens when the combined message, extension hints, and global hints don't all fit? Reserved-key hints (e.g. quit) are always shown in full first; all other content (extension hints, custom message, other global hints) is truncated to fit what's left.
 - What happens when two non-reserved keys — one global, one from the focused extension — collide? The focused extension's hint and behavior win (User Story 4); this is not a conflict requiring special handling, it's the documented precedence.
 - What happens when an extension's manifest declares a reserved key alongside otherwise-valid commands? The reserved keybinding is dropped; every other declared command still loads and registers normally (User Story 5).
 - What happens when the focused extension neither customizes its hints nor declares any manifest commands? The status bar shows no extension-specific content for that extension.
+
+## Clarifications
+
+### Session 2026-07-10
+
+- Q: When an extension is focused, do unclaimed global command hints (e.g. "Esc: back") stay visible in the status bar alongside the extension's hints, or does focusing an extension replace the entire global hint set? → A: Merge — unclaimed global hints remain visible alongside the focused extension's hints; only the specific key(s) the extension overrides drop their global hint.
+- Q: Can an extension show a custom message and custom keybind hints at the same time, or does supplying a message replace the hints entirely? → A: Both shown together — message and hints share the status-bar line, whichever fits after truncation.
+- Q: When status-bar content doesn't all fit, should reserved-key hints (e.g. quit) always stay visible, or can they be truncated away like anything else? → A: Reserved-key hints are truncation-exempt — always shown in full; everything else truncates first.
 
 ## Requirements *(mandatory)*
 
@@ -102,12 +112,14 @@ An extension's manifest (or its runtime customization) attempts to bind a reserv
 - **FR-004**: System MUST update the status bar immediately when the focused extension changes its hints or messages through the context object, with no user action required to refresh it.
 - **FR-005**: System MUST clear any extension-supplied hint/message customization when that extension's focus view is exited, so the next time it (or any extension) is focused, the default manifest-derived display applies unless re-customized.
 - **FR-006**: System MUST display, for any key bound both globally and by the focused extension (and not reserved), only the focused extension's hint — never both, and never the global one — while that extension is focused.
+- **FR-006a**: System MUST continue displaying the hints for any global command whose key is *not* claimed by the focused extension, merged alongside that extension's hints, for as long as an extension is focused.
 - **FR-007**: System MUST maintain a fixed list of reserved keys that no extension may register a command against, at any scope, via manifest or runtime customization.
 - **FR-008**: System MUST include Ctrl+Q, bound to the quit action, as the first entry in the reserved keys list.
 - **FR-009**: System MUST reject registration of any extension-declared command bound to a reserved key, while still loading and registering that extension's other valid commands normally.
 - **FR-010**: System MUST ensure that pressing a reserved key always triggers that key's global/reserved action, regardless of which extension is focused or what that extension's manifest declares.
 - **FR-011**: System MUST prevent an extension from displaying a reserved key as one of its own hints in the status bar, even if the extension attempts to via runtime customization.
-- **FR-012**: System MUST truncate status-bar content that exceeds the available width rather than wrapping or resizing the status bar region.
+- **FR-012**: System MUST truncate status-bar content that exceeds the available width rather than wrapping or resizing the status bar region, always fully preserving reserved-key hints and truncating all other content (extension hints, custom message, other global hints) first.
+- **FR-013**: System MUST display an extension's custom message together with its (and any unclaimed global) keybind hints on the same status-bar line, sharing the available width, rather than one replacing the other.
 
 ### Key Entities
 
