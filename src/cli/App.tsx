@@ -58,11 +58,18 @@ function AppInner(props: AppProps) {
   const errorTiles = props.extensionIds
     .map((id) => ({ id, state: props.loader.getState(id) }))
     .filter(({ state }) => state.status === "invalid-manifest" || state.status === "load-error")
-    .map(({ id, state }) => (
-      <box key={id} title={id} border borderColor="red">
-        <text fg="red">{`[${id}] failed to load: ${state.status === "invalid-manifest" || state.status === "load-error" ? state.error : ""}`}</text>
-      </box>
-    ));
+    .map(({ id, state }) => {
+      const rawError = state.status === "invalid-manifest" || state.status === "load-error" ? state.error : "";
+      // Zod validation errors are large multi-line JSON dumps — truncate so a
+      // single failed extension's tile can't blow out the dashboard layout
+      // and squeeze sibling tiles (FR-014, SC-005: isolation must be visual too).
+      const summary = rawError.split("\n")[0].slice(0, 80);
+      return (
+        <box key={id} title={id} border borderColor="red">
+          <text fg="red">{`[${id}] failed to load: ${summary}`}</text>
+        </box>
+      );
+    });
 
   return (
     <DashboardShell

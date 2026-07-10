@@ -13,7 +13,7 @@ export function createPeekView(store: TasksReactiveStore) {
     const completed = tasks.filter((t) => t.completed).length;
 
     return (
-      <box flexDirection="column" title="Tasks" borderStyle="double">
+      <box flexDirection="column" title="Tasks" border borderStyle="single">
         <text>{`${completed}/${tasks.length} done`}</text>
       </box>
     );
