@@ -1,22 +1,35 @@
 <!--
 Sync Impact Report
-Version change: (none) → 1.0.0
-Modified principles: n/a (initial ratification)
-Added sections:
-  - Core Principles I–V (Single-Renderer Ownership, Extension Peer-Dependency Isolation,
-    Scoped Storage Only, Deterministic Keybind Resolution, Fault-Isolated Extensions)
-  - Technology Constraints
-  - Development Workflow
-  - Governance
+Version change: 1.0.0 → 1.1.0
+Modified principles: none (no principle redefined or removed)
+Modified sections:
+  - Technology Constraints → Runtime bullet: now names both required flags
+    (`--experimental-ffi` and `--import tsx/esm`) instead of just the FFI flag.
+  - Technology Constraints → Language bullet: explicitly permits `tsx`'s loader hook
+    (`--import tsx/esm`) as a JIT JSX transform, since Node's native type-stripping cannot
+    transform JSX. Explicitly prohibits the `tsx` CLI wrapper (confirmed during
+    001-core-tasks-bootstrap implementation to break OpenTUI's native FFI renderer) and any
+    separate `tsc`/bundler build artifact.
+Added sections: none
 Removed sections: none
+Rationale for MINOR bump: this materially expands what "no separate build step" permits
+  (a named, scoped exception for JSX-only JIT transformation) rather than merely rewording
+  existing text — a MINOR bump per this document's own versioning policy, not a MAJOR one,
+  because no principle is redefined or weakened: extensions still cannot bypass the loader
+  themselves, and the underlying constraint (no compiled build artifact written to disk) is
+  unchanged.
 Templates requiring updates:
-  - .specify/templates/plan-template.md ⚠ pending (add Constitution Check gate referencing
-    these 5 principles before Phase 0 research)
-  - .specify/templates/spec-template.md ✅ no changes needed (stays implementation-agnostic
-    by design; principles apply at plan/implementation stage)
-  - .specify/templates/tasks-template.md ⚠ pending (ensure task categorization can flag
-    peer-dependency violations, storage-path violations, and per-extension error boundaries)
-Follow-up TODOs: none — all fields fully specified from project brainstorm context.
+  - .specify/templates/plan-template.md ⚠ still pending (unrelated to this amendment; carried
+    over from v1.0.0, not yet actioned)
+  - .specify/templates/spec-template.md ✅ no changes needed
+  - .specify/templates/tasks-template.md ⚠ still pending (unrelated to this amendment; carried
+    over from v1.0.0, not yet actioned)
+  - specs/001-core-tasks-bootstrap/plan.md ⚠ pending manual sync (Technical Context/Primary
+    Dependencies should list `tsx` and the `--import tsx/esm` requirement; flagged by
+    /spec-analyze as finding F1, this amendment resolves the constitution side only)
+Follow-up TODOs: sync specs/001-core-tasks-bootstrap/plan.md's Technical Context and
+  Constitution Check table to reference this amendment (see F1-F4 in the /spec-analyze
+  report from this session).
 -->
 
 # MyCLI Constitution
@@ -68,14 +81,23 @@ the correctness of code it did not write.
 ## Technology Constraints
 
 - **Runtime**: Node.js 26.3.0+, launched through a bash wrapper that encapsulates
-  `--experimental-ffi` — this flag MUST NOT be exposed to end users directly.
+  `--experimental-ffi` (required by OpenTUI's native FFI-backed renderer) and
+  `--import tsx/esm` (required for JSX — see Language below). Neither flag MUST be exposed
+  to end users directly.
 - **TUI stack**: `@opentui/react` + `@opentui/core`, using `createReactSlotRegistry` as the
   marketplace extension mechanism. Switching renderers (e.g. to a future stable OpenTUI
   major, or away from OpenTUI entirely) is a constitutional amendment, not a routine
   dependency bump, because Principles I and II are written against this renderer's specific
   guarantees.
-- **Language**: TypeScript, using Node.js's native type-stripping — no separate `tsc` build
-  step for running the app.
+- **Language**: TypeScript, using Node.js's native type-stripping for TypeScript-only syntax.
+  Native type-stripping cannot transform JSX, so `.tsx` files additionally run through
+  `tsx`'s loader hook (`--import tsx/esm`) — a JIT JSX transform, not a separate build
+  artifact. This is the one permitted exception to "no separate build step": no compiled
+  output is written to disk and no bundler runs as a discrete pipeline stage. The loader
+  MUST be attached via `--import tsx/esm`, never via the `tsx` CLI wrapper (`tsx <file>`),
+  which was confirmed during the 001-core-tasks-bootstrap implementation to break OpenTUI's
+  native FFI renderer entirely. Plain `.ts` files continue to run via native type-stripping
+  alone, with no loader involved.
 - **Config**: Zod-validated YAML is the only supported configuration format.
 - **Storage**: Filesystem-backed, scoped per extension. A future SQLite-backed StorageAPI
   upgrade must preserve the same scoping guarantee (Principle III) before it can replace or
@@ -117,4 +139,4 @@ project.
 these five principles before implementation planning proceeds. Any violation must be
 justified in the plan's complexity-tracking section or the plan must be revised.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-07
+**Version**: 1.1.0 | **Ratified**: 2026-07-07 | **Last Amended**: 2026-07-10

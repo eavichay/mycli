@@ -7,15 +7,15 @@
 
 ## Summary
 
-Stand up the mycli TUI core framework — a single owned renderer, a typed slot registry (`grid`/`sidebar`/`statusbar`/`overlay`), a manifest-first lazy extension loader, a three-level (`focused` → `local` → `global`) keybind resolution chain, and a per-extension scoped `StorageAPI` — then validate the whole stack end-to-end by implementing Tasks as the first real, built-in extension (add/edit/delete/complete tasks, due-date sorting, hide-completed toggle, full peek/focus/persistence round-trip). Built on `@opentui/core` + `@opentui/react`'s `createReactSlotRegistry` and `useKeyboard`, TypeScript via Node.js 26 native type-stripping, filesystem+JSON storage behind the `StorageAPI` interface, YAML+Zod config, and `node:test` + `@opentui/react`'s `testRender` for headless verification.
+Stand up the mycli TUI core framework — a single owned renderer, a typed slot registry (`grid`/`sidebar`/`statusbar`/`overlay`), a manifest-first lazy extension loader, a three-level (`focused` → `local` → `global`) keybind resolution chain, and a per-extension scoped `StorageAPI` — then validate the whole stack end-to-end by implementing Tasks as the first real, built-in extension (add/edit/delete/complete tasks, due-date sorting, hide-completed toggle, full peek/focus/persistence round-trip). Built on `@opentui/core` + `@opentui/react`'s `createReactSlotRegistry` and `useKeyboard`, TypeScript via Node.js 26 native type-stripping (`.tsx` files additionally via `tsx`'s `--import tsx/esm` loader hook for JSX — see Technical Context), filesystem+JSON storage behind the `StorageAPI` interface, YAML+Zod config, and `node:test` + `@opentui/react`'s `testRender`/`createTestRenderer` for headless verification.
 
 ## Technical Context
 
-**Language/Version**: TypeScript, Node.js native type-stripping (no `tsc` build step), Node.js 26.3.0+
-**Primary Dependencies**: `@opentui/core`, `@opentui/react` (`createReactSlotRegistry`, `Slot`, `useKeyboard`, `createCliRenderer`, `createRoot`), `zod`, `yaml`
+**Language/Version**: TypeScript, Node.js native type-stripping for `.ts` files, Node.js 26.3.0+. `.tsx` files additionally run through `tsx`'s loader hook (`--import tsx/esm`) since native type-stripping cannot transform JSX — a JIT transform, not a separate build artifact (constitution v1.1.0, Technology Constraints → Language). The `tsx` CLI wrapper (`tsx <file>`) MUST NOT be used: it was confirmed during this feature's implementation to break OpenTUI's native FFI renderer entirely.
+**Primary Dependencies**: `@opentui/core`, `@opentui/react` (`createReactSlotRegistry`, `Slot`, `useKeyboard`, `createCliRenderer`, `createRoot`), `zod`, `yaml`, `tsx` (JSX loader hook only, per Language above — not used as a bundler/CLI)
 **Storage**: Filesystem-backed JSON, one scoped directory per extension under `os.homedir()/.mycli/extensions/<id>/`, accessed only through `StorageAPI`
 **Testing**: `node:test` + `node:assert` (framework/logic tests); `@opentui/react`'s `testRender()` / `@opentui/core/testing`'s `createTestRenderer` (headless UI + keyboard interaction tests)
-**Target Platform**: Cross-platform terminal (macOS/Linux/Windows), launched via a bash wrapper encapsulating `--experimental-ffi`
+**Target Platform**: Cross-platform terminal (macOS/Linux/Windows), launched via a bash wrapper encapsulating `--experimental-ffi` and `--import tsx/esm`
 **Project Type**: Single-project CLI/TUI application
 **Performance Goals**: Keypress-to-visual-update latency imperceptible to the user (<50ms) at typical task-list sizes; dashboard cold-start render <500ms
 **Constraints**: Fully offline/local, single Node.js process, single renderer instance (Principle I), extension code loaded lazily via `import()` only after manifest validation (never `require()`, never a worker thread — Principle II)
@@ -27,13 +27,15 @@ Stand up the mycli TUI core framework — a single owned renderer, a typed slot 
 
 | Principle | Compliance |
 |---|---|
-| I. Single-Renderer Ownership | PASS — `createCliRenderer()` is called exactly once, at the host entrypoint. Extensions (including built-in Tasks) only ever receive a slot-registration callback and `AppContext`, never the renderer or a renderer-construction API. |
+| I. Single-Renderer Ownership | PASS — `createCliRenderer()` is called exactly once, at the host entrypoint. Extensions (including built-in Tasks) only ever receive a slot-registration callback and `HostContext`, never the renderer or a renderer-construction API. |
 | II. Extension Peer-Dependency Isolation | PASS — Tasks (and any future extension) declares `@opentui/react`/`@opentui/core` as `peerDependencies`, not bundled deps. Extension modules are loaded via `import()` in-process, gated on manifest `activationEvents`; no `require()`, no worker thread. |
-| III. Scoped Storage Only | PASS — Extensions receive only the `StorageAPI` interface (`get`/`set`/`delete`/`list`) via `AppContext`; the host alone resolves and owns the real filesystem path (`contracts/storage-api.md`). |
+| III. Scoped Storage Only | PASS — Extensions receive only the `StorageAPI` interface (`get`/`set`/`delete`/`list`) via `HostContext`; the host alone resolves and owns the real filesystem path (`contracts/storage-api.md`). |
 | IV. Deterministic Keybind Resolution | PASS — Three explicit, independently-inspectable `useKeyboard` capture levels (`focused` → `local` → `global`), each returning claim/delegate, no flat boolean, no skippable level (`contracts/keybind-chain.md`). |
-| V. Fault-Isolated Extensions | PASS — Manifest validation and `import()` are wrapped so a failure degrades only that extension's `grid` slot (via `Slot`'s `pluginFailurePlaceholder` + a per-slot error boundary), never the host or sibling extensions (FR-014, SC-005). |
+| V. Fault-Isolated Extensions | PASS — Render-time failures are isolated by `@opentui/react`'s `<Slot>`, which already wraps every plugin's rendered node in its own internal error boundary via `pluginFailurePlaceholder` (a standalone `ErrorBoundary.tsx` was found redundant during implementation and dropped). Load-time failures (invalid manifest, `import()`/activation throwing) never reach `registry.register()`, so they're surfaced separately via an explicit load-error tile (`App.tsx`'s `extraGridContent`, added in Polish phase T038) driven by the loader's per-extension state. Neither failure mode affects the host or sibling extensions (FR-014, SC-005). |
 
 No violations. Complexity Tracking table left empty.
+
+**Note (constitution v1.1.0 amendment, 2026-07-10)**: `HostContext` above is named as such — not `AppContext` — specifically to avoid colliding with `@opentui/react`'s own exported `AppContext` (`{ renderer, keyHandler }`), which this plan does not use directly. See constitution's Technology Constraints → Language for the `tsx/esm` loader exception this implementation required and required amending the constitution for.
 
 ## Project Structure
 
@@ -58,11 +60,15 @@ specs/001-core-tasks-bootstrap/
 src/
 ├── core/
 │   ├── renderer.ts          # createCliRenderer + createRoot bootstrap (Principle I)
-│   ├── slots.ts              # createReactSlotRegistry setup, Slots/AppContext types
+│   ├── slots.ts              # createReactSlotRegistry setup, Slots/HostContext types
+│   ├── DashboardShell.tsx    # grid/sidebar/statusbar/overlay regions (presentational)
+│   ├── FocusFrame.tsx        # framed/highlighted focus-view treatment, no animation
+│   ├── config.ts             # YAML+Zod host config loader
 │   ├── keybinds/
-│   │   ├── FocusedScope.tsx  # focused-level useKeyboard wrapper
-│   │   ├── LocalScope.tsx    # local (active-extension)-level useKeyboard wrapper
-│   │   └── GlobalScope.tsx   # global-level useKeyboard wrapper
+│   │   ├── GlobalScope.tsx   # KeybindDispatcherProvider (single root useKeyboard
+│   │   │                     # subscription) + global-level useGlobalKeybinds
+│   │   ├── LocalScope.tsx    # local (active-extension)-level useLocalKeybinds
+│   │   └── FocusedScope.tsx  # focused-level useFocusedKeybinds
 │   ├── storage/
 │   │   └── StorageAPI.ts     # scoped filesystem+JSON implementation (Principle III)
 │   └── extensions/
@@ -74,21 +80,25 @@ src/
 │       ├── index.tsx         # registers peek/focus views + commands
 │       ├── PeekView.tsx
 │       ├── FocusView.tsx
+│       ├── reactive-store.ts # shared reactive wrapper keeping peek+focus in sync
 │       ├── task-store.ts     # Task CRUD + sort logic against StorageAPI
 │       └── task-schema.ts    # Task type + validation (data-model.md)
 └── cli/
-    └── index.ts               # process entrypoint (invoked by the bash wrapper)
+    ├── index.ts               # process entrypoint (invoked by the bash wrapper)
+    └── App.tsx                # root component: KeybindDispatcherProvider + navigation state
 
 tests/
 ├── unit/
-│   ├── keybind-chain.test.ts
+│   ├── keybind-chain.test.tsx      # .tsx: needs JSX for the test harness
 │   ├── manifest-validation.test.ts
+│   ├── storage-api.test.ts
 │   └── task-store.test.ts
 ├── integration/
-│   ├── dashboard-shell.test.ts     # US1
-│   ├── tasks-end-to-end.test.ts    # US2
-│   ├── focus-navigation.test.ts    # US3
-│   └── keybind-scoping.test.ts     # US4
+│   ├── dashboard-shell.test.tsx    # US1 (.tsx: needs JSX)
+│   ├── tasks-end-to-end.test.tsx   # US2 (.tsx: needs JSX)
+│   ├── focus-navigation.test.tsx   # US3 (.tsx: needs JSX)
+│   ├── keybind-scoping.test.tsx    # US4 (.tsx: needs JSX)
+│   └── fault-isolation.test.tsx    # SC-005 (.tsx: needs JSX)
 └── contract/
     └── extension-manifest.test.ts
 ```
