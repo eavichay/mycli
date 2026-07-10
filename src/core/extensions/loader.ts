@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { validateManifest, type ExtensionManifest } from "./manifest.ts";
 import type { HostContext, HostSlotRegistry } from "../slots.ts";
+import { createStatusBarContextAPI, type StatusBarContextAPI } from "../statusBar/StatusBarContextAPI.ts";
 
 export interface ExtensionActivationContext {
   host: HostContext;
   registry: HostSlotRegistry;
   manifest: ExtensionManifest;
+  statusBar: StatusBarContextAPI;
 }
 
 /** A view component takes no props; each extension closes over its own state. */
@@ -44,6 +46,7 @@ export type LoadedExtensionState =
 export class ExtensionLoader {
   private readonly sources = new Map<string, ExtensionSource>();
   private readonly states = new Map<string, LoadedExtensionState>();
+  private readonly statusBars = new Map<string, StatusBarContextAPI>();
 
   constructor(
     sources: Record<string, ExtensionSource>,
@@ -62,6 +65,16 @@ export class ExtensionLoader {
 
   getAllStates(): ReadonlyMap<string, LoadedExtensionState> {
     return this.states;
+  }
+
+  /** One StatusBarContextAPI instance per extension, created on first access. */
+  getStatusBar(id: string): StatusBarContextAPI {
+    let api = this.statusBars.get(id);
+    if (!api) {
+      api = createStatusBarContextAPI();
+      this.statusBars.set(id, api);
+    }
+    return api;
   }
 
   /**
@@ -84,7 +97,12 @@ export class ExtensionLoader {
 
         try {
           const mod = await source.importModule();
-          const registration = mod.default({ host: this.host, registry: this.registry, manifest: result.manifest });
+          const registration = mod.default({
+            host: this.host,
+            registry: this.registry,
+            manifest: result.manifest,
+            statusBar: this.getStatusBar(id),
+          });
           this.states.set(id, { status: "loaded", manifest: result.manifest, registration });
         } catch (err) {
           this.states.set(id, {

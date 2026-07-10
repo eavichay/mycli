@@ -17,6 +17,13 @@ export interface DashboardShellProps {
    * `registry.register()` and so has no slot contribution of its own.
    */
   extraGridContent?: React.ReactNode;
+  /**
+   * The contextual keybind-hint display (002-core-status-bar). Rendered
+   * alongside the existing `statusbar` Slot rather than through the
+   * registry, since it needs host-level state (focused extension, global
+   * commands) the per-plugin Slot render signature doesn't carry.
+   */
+  statusBarContent?: React.ReactNode;
 }
 
 /**
@@ -27,7 +34,7 @@ export interface DashboardShellProps {
  * ErrorBoundary component in tasks.md T007.
  */
 export function DashboardShell(props: DashboardShellProps): React.ReactNode {
-  const { registry, activeExtensionId, focusContent, hasNoExtensions, extraGridContent } = props;
+  const { registry, activeExtensionId, focusContent, hasNoExtensions, extraGridContent, statusBarContent } = props;
 
   return (
     <box flexDirection="column" width="100%" height="100%">
@@ -48,6 +55,7 @@ export function DashboardShell(props: DashboardShellProps): React.ReactNode {
       </box>
       <box height={1} title="statusbar">
         <Slot<Slots, HostContext> registry={registry} name="statusbar" mode="append" pluginFailurePlaceholder={renderPluginFailure} />
+        {statusBarContent}
       </box>
       <box position="absolute" title="overlay">
         <Slot<Slots, HostContext> registry={registry} name="overlay" mode="append" pluginFailurePlaceholder={renderPluginFailure} />

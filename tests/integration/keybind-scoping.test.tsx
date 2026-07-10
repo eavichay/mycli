@@ -92,9 +92,9 @@ test("a key unclaimed by focused/local scope still reaches global scope (quit) e
     });
     await renderOnce();
 
-    // 'q' is not one of Tasks' local commands (a/d/e/space/c), so it must fall through to the global quit handler
+    // 'ctrl+q' is not one of Tasks' local commands (a/d/e/space/c), so it must fall through to the global quit handler
     act(() => {
-      mockInput.pressKey("q");
+      mockInput.pressKey("q", { ctrl: true });
     });
     await renderOnce();
 

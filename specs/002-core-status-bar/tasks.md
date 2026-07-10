@@ -23,7 +23,7 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 **Purpose**: No new dependencies or scaffolding are required — this feature is purely additive to `001-core-tasks-bootstrap`'s existing `src/core/`, `src/extensions/tasks/`, and `tests/` structure.
 
-- [ ] T001 Confirm `npm test` and `npx tsc --noEmit` both pass cleanly on `002-core-status-bar` before making any changes (baseline check; no new files)
+- [X] T001 Confirm `npm test` and `npx tsc --noEmit` both pass cleanly on `002-core-status-bar` before making any changes (baseline check; no new files) — 35/35 tests, 0 type errors
 
 **Checkpoint**: Baseline confirmed green — ready for Foundational work.
 
@@ -35,18 +35,18 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete — every story either displays hints derived from these primitives or depends on the reserved-key guarantee they enforce.
 
-- [ ] T002 Implement `canonicalKeyId(key: KeyEvent): string` in `src/core/keybinds/canonicalKeyId.ts` — modifiers in fixed order (`ctrl+`, `meta+`, `shift+`, `option+`) + lowercase base name (data-model.md "Canonical Key Id"; research.md §1)
-- [ ] T003 [P] Unit test `canonicalKeyId()`: plain key (`q` → `"q"`), single modifier (`ctrl+q` → `"ctrl+q"`), multiple modifiers in fixed order regardless of input order, case-insensitivity of the base name, in `tests/unit/canonical-key-id.test.ts` (depends on T002)
-- [ ] T004 Update `src/core/keybinds/GlobalScope.tsx`'s `useScopeCommands` dispatch handler to look up `commands[canonicalKeyId(key)]` instead of `commands[key.name]`, so `ctrl+q` and `q` are distinguishable at every scope (focused/local/global) (depends on T002) — human review recommended: highest-blast-radius change in this feature, per plan.md Triage
-- [ ] T005 [P] Implement the reserved-keys list in `src/core/reservedKeys.ts`: `RESERVED_KEYS: ReservedKey[] = [{ key: "ctrl+q", label: "Quit" }]`, exported as both the raw list and a `isReservedKey(canonicalId: string): boolean` helper (data-model.md "Reserved Key"; FR-007, FR-008)
-- [ ] T006 Implement the structured global-commands registry in `src/core/globalCommands.ts`: `GLOBAL_COMMANDS: GlobalCommand[]` covering quit (`ctrl+q`, reserved, calls `renderer.destroy()`), open (`return`), back (`escape`) — replaces the ad hoc object App.tsx currently builds inline (data-model.md "Global Command"; FR-001, FR-008, FR-008a; depends on T005) — human review recommended: breaks basic navigation for every user if wrong
-- [ ] T007 Update `src/core/extensions/manifest.ts`'s `validateManifest()` to filter `commands[]` entries whose canonicalized `keybind` is a reserved key out of the returned manifest before the loader ever sees them (drop-and-continue, not a validation failure) (FR-009; contracts/reserved-keys.md "Enforcement point 1"; depends on T002, T005) — human review recommended: core safety guarantee (SC-002)
-- [ ] T008 [P] Unit test the manifest reserved-key filter: a manifest with one reserved-key command and one valid command still validates successfully, with only the reserved-key command absent from the result, in `tests/unit/reserved-keys.test.ts` (depends on T007)
-- [ ] T009 Implement `StatusBarContextAPI` (`setHints`, `setMessage`, `clear`) in `src/core/statusBar/StatusBarContextAPI.ts` — `setHints()` filters out any reserved-key entry before storing (FR-011; contracts/status-bar-context.md; contracts/reserved-keys.md "Enforcement point 2"; depends on T005) — human review recommended: second half of the core safety guarantee (SC-002)
-- [ ] T010 [P] Unit test `StatusBarContextAPI`: `setHints()` with a mix of reserved and non-reserved keys retains only the non-reserved ones; `setMessage()`/`clear()` behave as documented, in `tests/unit/reserved-keys.test.ts` (same file as T008; depends on T009)
-- [ ] T011 Wire `StatusBarContextAPI` into the loader: `ExtensionActivationContext` (in `src/core/extensions/loader.ts`) gains a `statusBar` property, one `StatusBarContextAPI` instance constructed per extension (depends on T009)
-- [ ] T012 [P] Implement the status-bar layout/truncation algorithm as a pure function in `src/core/statusBar/layoutStatusBar.ts`: given reserved hints, extension hints (custom or manifest-derived), unclaimed global hints, and an optional message, produce a single width-budgeted string — reserved hints always shown in full, everything else truncated to fit (data-model.md "Status Bar Display State"; research.md §6; FR-012, FR-013)
-- [ ] T013 [P] Unit test `layoutStatusBar()`: merge behavior (unclaimed global hints included), message+hints coexistence, and truncation with reserved-hint exemption (content long enough to overflow retains reserved hints in full while other content is cut), in `tests/unit/status-bar-layout.test.ts` (depends on T012)
+- [X] T002 Implement `canonicalKeyId(key: KeyEvent): string` in `src/core/keybinds/canonicalKeyId.ts` — modifiers in fixed order (`ctrl+`, `meta+`, `shift+`, `option+`) + lowercase base name (data-model.md "Canonical Key Id"; research.md §1) — also added `canonicalKeyIdFromString()` for manifest keybind strings, needed by T007/T009
+- [X] T003 [P] Unit test `canonicalKeyId()`: plain key (`q` → `"q"`), single modifier (`ctrl+q` → `"ctrl+q"`), multiple modifiers in fixed order regardless of input order, case-insensitivity of the base name, in `tests/unit/canonical-key-id.test.ts` (depends on T002) — 4/4 passing
+- [X] T004 Update `src/core/keybinds/GlobalScope.tsx`'s `useScopeCommands` dispatch handler to look up `commands[canonicalKeyId(key)]` instead of `commands[key.name]`, so `ctrl+q` and `q` are distinguishable at every scope (focused/local/global) (depends on T002) — human review recommended: highest-blast-radius change in this feature, per plan.md Triage
+- [X] T005 [P] Implement the reserved-keys list in `src/core/reservedKeys.ts`: `RESERVED_KEYS: ReservedKey[] = [{ key: "ctrl+q", label: "Quit" }]`, exported as both the raw list and a `isReservedKey(canonicalId: string): boolean` helper (data-model.md "Reserved Key"; FR-007, FR-008)
+- [X] T006 Implement the structured global-commands registry in `src/core/globalCommands.ts` — implemented as `createGlobalCommands(deps)` factory rather than a static list, since quit/open/back need closures over `renderer`/navigation state only available inside `App.tsx`; `globalCommandsToKeyMap()` derives the `useGlobalKeybinds` dispatch map from the same list (data-model.md "Global Command"; FR-001, FR-008, FR-008a; depends on T005) — human review recommended: breaks basic navigation for every user if wrong
+- [X] T007 Update `src/core/extensions/manifest.ts`'s `validateManifest()` to filter `commands[]` entries whose canonicalized `keybind` is a reserved key out of the returned manifest before the loader ever sees them (drop-and-continue, not a validation failure) (FR-009; contracts/reserved-keys.md "Enforcement point 1"; depends on T002, T005) — human review recommended: core safety guarantee (SC-002)
+- [X] T008 [P] Unit test the manifest reserved-key filter: a manifest with one reserved-key command and one valid command still validates successfully, with only the reserved-key command absent from the result, in `tests/unit/reserved-keys.test.ts` (depends on T007) — 3/3 passing (plus a mixed-case/order variant)
+- [X] T009 Implement `StatusBarContextAPI` (`setHints`, `setMessage`, `clear`) in `src/core/statusBar/StatusBarContextAPI.ts` — `setHints()` filters out any reserved-key entry before storing (FR-011; contracts/status-bar-context.md; contracts/reserved-keys.md "Enforcement point 2"; depends on T005) — human review recommended: second half of the core safety guarantee (SC-002). Also exposes `getHints()`/`getMessage()`/`subscribe()` for `StatusBar.tsx` to read and re-render on change (US1)
+- [X] T010 [P] Unit test `StatusBarContextAPI`: `setHints()` with a mix of reserved and non-reserved keys retains only the non-reserved ones; `setMessage()`/`clear()` behave as documented, in `tests/unit/reserved-keys.test.ts` (same file as T008; depends on T009) — 2/2 passing
+- [X] T011 Wire `StatusBarContextAPI` into the loader: `ExtensionActivationContext` (in `src/core/extensions/loader.ts`) gains a `statusBar` property, one `StatusBarContextAPI` instance constructed per extension via a new `getStatusBar(id)` accessor (depends on T009)
+- [X] T012 [P] Implement the status-bar layout/truncation algorithm as a pure function in `src/core/statusBar/layoutStatusBar.ts`: given reserved hints, extension hints (custom or manifest-derived), unclaimed global hints, and an optional message, produce a single width-budgeted string — reserved hints always shown in full, everything else truncated to fit (data-model.md "Status Bar Display State"; research.md §6; FR-012, FR-013)
+- [X] T013 [P] Unit test `layoutStatusBar()`: merge behavior (unclaimed global hints included), message+hints coexistence, and truncation with reserved-hint exemption (content long enough to overflow retains reserved hints in full while other content is cut), in `tests/unit/status-bar-layout.test.ts` (depends on T012) — 6/6 passing
 
 **Checkpoint**: Foundation ready — all user stories can now proceed.
 
@@ -60,13 +60,13 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Integration test: on launch (no extension focused), the status bar shows all `GLOBAL_COMMANDS` hints including `Ctrl+Q: Quit`; after focusing and returning from an extension, the status bar reverts to the same global-only display, in `tests/integration/status-bar-global.test.tsx`
+- [X] T014 [P] [US1] Integration test: on launch (no extension focused), the status bar shows all `GLOBAL_COMMANDS` hints including `Ctrl+Q: Quit`; after focusing and returning from an extension, the status bar reverts to the same global-only display, in `tests/integration/status-bar-global.test.tsx` — 4/4 passing (added two extra tests beyond the plan: Ctrl+Q actually quits, and plain `q` no longer does — direct proof of FR-008/FR-008a)
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement `src/core/StatusBar.tsx`: a component rendering `layoutStatusBar()`'s output, given the current `activeExtensionId`, `GLOBAL_COMMANDS`, and (if focused) the extension's hints/message from its `StatusBarContextAPI` instance (depends on T006, T009, T012)
-- [ ] T016 [US1] Register `StatusBar` into the existing `statusbar` slot in `src/core/DashboardShell.tsx` (slot itself unchanged, per spec Assumptions; depends on T015)
-- [ ] T017 [US1] Update `src/cli/App.tsx` to build its `useGlobalKeybinds()` command map from `GLOBAL_COMMANDS` (T006) instead of the current inline object literal, and pass `GLOBAL_COMMANDS` + the focused extension's `StatusBarContextAPI` (if any) down to `StatusBar` (depends on T006, T011, T016)
+- [X] T015 [US1] Implement `src/core/StatusBar.tsx`: a component rendering `layoutStatusBar()`'s output, given the current `activeExtensionId`, `GLOBAL_COMMANDS`, and (if focused) the extension's hints/message from its `StatusBarContextAPI` instance (depends on T006, T009, T012) — manifest-derived hint labels use the command `id` (e.g. `tasks.add`) since the manifest schema has no separate friendly-label field; noted as a minor readability gap, not a functional one
+- [X] T016 [US1] Register `StatusBar` into the existing `statusbar` slot in `src/core/DashboardShell.tsx` (slot itself unchanged, per spec Assumptions; depends on T015) — `StatusBar` is passed down as a new `statusBarContent` prop (rendered alongside the existing, still-unused-by-any-extension `<Slot name="statusbar">`) rather than registered through the plugin registry, since it needs host-level state (focused extension, global commands) the per-plugin `Slot` render signature (`ctx, props`) doesn't carry
+- [X] T017 [US1] Update `src/cli/App.tsx` to build its `useGlobalKeybinds()` command map from `GLOBAL_COMMANDS` (T006) instead of the current inline object literal, and pass `GLOBAL_COMMANDS` + the focused extension's `StatusBarContextAPI` (if any) down to `StatusBar` (depends on T006, T011, T016)
 
 **Checkpoint**: User Story 1 fully functional and independently testable — MVP.
 
@@ -80,11 +80,11 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Integration test: focusing Tasks (which declares `commands[]` in `extension.json` and, at this point in the plan, has not yet been wired to call `setHints()`) shows its manifest keybindings in the status bar, merged with `Esc: Back`, in `tests/integration/status-bar-defaults.test.tsx`
+- [X] T018 [P] [US2] Integration test: focusing Tasks (which declares `commands[]` in `extension.json` and, at this point in the plan, has not yet been wired to call `setHints()`) shows its manifest keybindings in the status bar, merged with `Esc: Back`, in `tests/integration/status-bar-defaults.test.tsx` — 1/1 passing. Surfaced a real layout bug in `layoutStatusBar()` (T012): extension hints were ordered before unclaimed global hints, so Tasks' 5 manifest commands pushed `escape: Back` off the truncated line — fixed by reprioritizing unclaimed global hints ahead of extension hints (spec doesn't mandate non-reserved ordering, only that reserved hints are exempt)
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Extend `StatusBar.tsx` (T015) to fall back to the focused extension's `manifest.commands[]` as its hint source whenever that extension's `StatusBarContextAPI` has no custom hints set (FR-002; depends on T015)
+- [X] T019 [US2] Extend `StatusBar.tsx` (T015) to fall back to the focused extension's `manifest.commands[]` as its hint source whenever that extension's `StatusBarContextAPI` has no custom hints set (FR-002; depends on T015) — already implemented as part of T015; this task's scope was absorbed there
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 
@@ -98,13 +98,13 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 ### Tests for User Story 3
 
-- [ ] T020 [P] [US3] Integration test: entering Tasks' add-task mode updates the status bar to reflect add-mode hints (e.g. `Return: submit`, `Esc: cancel`) instead of manifest defaults; canceling back to the list reverts to manifest-derived hints; leaving Tasks' focus view entirely and re-entering also starts from manifest defaults (not a stale customization), in `tests/integration/status-bar-custom.test.tsx`
+- [X] T020 [P] [US3] Integration test: entering Tasks' add-task mode updates the status bar to reflect add-mode hints (e.g. `Return: submit`, `Esc: cancel`) instead of manifest defaults; canceling back to the list reverts to manifest-derived hints; leaving Tasks' focus view entirely and re-entering also starts from manifest defaults (not a stale customization), in `tests/integration/status-bar-custom.test.tsx` — 3/3 passing on first run
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Update `src/extensions/tasks/index.tsx` to pass `ctx.statusBar` into `createFocusView(store, ctx.statusBar)` (depends on T011)
-- [ ] T022 [US3] Update `src/extensions/tasks/FocusView.tsx`'s mode-change handlers (`a`/`e`/`escape`/submit) to call `statusBar.setHints([...])`/`setMessage(...)` reflecting the current mode (list vs. add vs. edit), per contracts/status-bar-context.md's usage pattern (depends on T021, T019)
-- [ ] T023 [US3] In `src/cli/App.tsx`, call the previously-focused extension's `statusBar.clear()` when `activeExtensionId` changes away from it, so FR-005's clear-on-exit guarantee is host-owned rather than relying on the extension to clean up (depends on T017)
+- [X] T021 [US3] Update `src/extensions/tasks/index.tsx` to pass `ctx.statusBar` into `createFocusView(store, ctx.statusBar)` (depends on T011)
+- [X] T022 [US3] Update `src/extensions/tasks/FocusView.tsx`'s mode-change handlers (`a`/`e`/`escape`/submit) to call `statusBar.setHints([...])`/`setMessage(...)` reflecting the current mode (list vs. add vs. edit), per contracts/status-bar-context.md's usage pattern (depends on T021, T019) — implemented as one `useEffect` keyed on `[mode, error]` rather than scattering calls across each handler, so no transition can be missed; list mode calls `clear()` to revert to manifest defaults
+- [X] T023 [US3] In `src/cli/App.tsx`, call the previously-focused extension's `statusBar.clear()` when `activeExtensionId` changes away from it, so FR-005's clear-on-exit guarantee is host-owned rather than relying on the extension to clean up (depends on T017) — implemented as a `useEffect` cleanup function keyed on `activeExtensionId`, fires on both change-away and unmount
 
 **Checkpoint**: User Stories 1, 2, AND 3 all work independently.
 
@@ -118,11 +118,11 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 ### Tests for User Story 4
 
-- [ ] T024 [P] [US4] Integration test: a temporarily-configured colliding non-reserved key shows only the focused extension's hint while focused and the global hint again once unfocused; `Esc: Back` remains visible throughout since it's never claimed by the extension, in `tests/integration/status-bar-override.test.tsx`
+- [X] T024 [P] [US4] Integration test: a temporarily-configured colliding non-reserved key shows only the focused extension's hint while focused and the global hint again once unfocused; an unclaimed global hint remains visible throughout, in `tests/integration/status-bar-override.test.tsx` — 2/2 passing, using a minimal inline test extension (colliding on `escape`, then a variant colliding on nothing) rather than a temporarily-reconfigured Tasks
 
 ### Implementation for User Story 4
 
-- [ ] T025 [US4] Confirm/adjust `layoutStatusBar()` (T012) excludes any global command whose key matches one of the focused extension's active hint keys before merging (FR-006, FR-006a — likely already satisfied by T012/T013's design; this task is the explicit verification pass against a real collision scenario)
+- [X] T025 [US4] Confirm/adjust `layoutStatusBar()` (T012) excludes any global command whose key matches one of the focused extension's active hint keys before merging (FR-006, FR-006a — likely already satisfied by T012/T013's design; this task is the explicit verification pass against a real collision scenario) — confirmed correct, no adjustment needed; already exercised end-to-end by T024
 
 **Checkpoint**: User Stories 1–4 all work independently.
 
@@ -136,11 +136,11 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 ### Tests for User Story 5
 
-- [ ] T026 [P] [US5] Integration test, end-to-end: a test extension whose manifest declares a command on `ctrl+q` alongside other valid commands loads successfully; focusing it and pressing `Ctrl+Q` quits (not the extension's declared action); the extension's other commands still register and work; the status bar never shows `ctrl+q` under that extension even if it calls `setHints([{ key: "ctrl+q", ... }])`, in `tests/integration/reserved-key-enforcement.test.tsx` (depends on T007, T009, T017)
+- [X] T026 [P] [US5] Integration test, end-to-end: a test extension whose manifest declares a command on `ctrl+q` alongside other valid commands loads successfully; focusing it and pressing `Ctrl+Q` quits (not the extension's declared action); the extension's other commands still register and work; the status bar never shows `ctrl+q` under that extension even if it calls `setHints([{ key: "ctrl+q", ... }])`, in `tests/integration/reserved-key-enforcement.test.tsx` (depends on T007, T009, T017) — 1/1 passing, including the worst case where the extension's `FocusView` also directly calls `useLocalKeybinds({ "ctrl+q": ... })` in code (not just via its manifest)
 
 ### Implementation for User Story 5
 
-- [ ] T027 [US5] No new implementation expected — this story is the end-to-end proof that T004 (dispatch), T007 (manifest filter), and T009 (runtime hint filter) compose correctly together. If T026 fails, fix whichever of those three is at fault rather than adding new code here.
+- [X] T027 [US5] **A real gap was found and fixed here, not "no new implementation" as originally planned**: T007 (manifest filter) and T009 (runtime hint filter) only guard *metadata* — an extension's `FocusView` could still directly call `useLocalKeybinds({ "ctrl+q": handler })` in its own code, which would legitimately claim the key at local scope before global ever saw it, since local scope has higher dispatch precedence (Principle IV). Neither T007 nor T009 could have caught this. Fixed by adding a third enforcement point in `src/core/keybinds/GlobalScope.tsx`'s `useScopeCommands`: any reserved key is filtered out of the command lookup at `focused`/`local` scope (never at `global`), so no registration mechanism — manifest, runtime hint, or raw dispatch code — can ever make a reserved key fire anywhere but global. Covered by a new unit test in `tests/unit/keybind-chain.test.tsx` and exercised end-to-end by T026.
 
 **Checkpoint**: All five user stories independently functional — SC-002 verified end-to-end.
 
@@ -150,11 +150,11 @@ Single project: `src/`, `tests/` at repository root, additive to `001-core-tasks
 
 **Purpose**: Update the three `001-core-tasks-bootstrap` tests affected by the quit-key rebind, and validate the full quickstart.
 
-- [ ] T028 [P] Update `tests/integration/dashboard-shell.test.tsx`'s quit-key assertion from `mockInput.pressKey("q")` to a `ctrl+q` press (via the mock input's modifier argument), per research.md §2's planned impact
-- [ ] T029 [P] Update `tests/integration/fault-isolation.test.tsx`'s quit-key assertion the same way
-- [ ] T030 [P] Update `tests/integration/keybind-scoping.test.tsx`'s quit-key assertion the same way
-- [ ] T031 Run all 5 `quickstart.md` scenarios end-to-end (via their automated integration-test equivalents, consistent with `001-core-tasks-bootstrap`'s approach) and confirm expected outcomes
-- [ ] T032 [P] Cleanup pass across `src/core/statusBar/`, `src/core/globalCommands.ts`, `src/core/reservedKeys.ts`, and touched files in `src/extensions/tasks/` (dead code, consistent naming, no leftover TODOs)
+- [X] T028 [P] Update `tests/integration/dashboard-shell.test.tsx`'s quit-key assertion from `mockInput.pressKey("q")` to a `ctrl+q` press (via the mock input's modifier argument), per research.md §2's planned impact
+- [X] T029 [P] Update `tests/integration/fault-isolation.test.tsx`'s quit-key assertion the same way
+- [X] T030 [P] Update `tests/integration/keybind-scoping.test.tsx`'s quit-key assertion the same way
+- [X] T031 Run all 5 `quickstart.md` scenarios end-to-end (via their automated integration-test equivalents, consistent with `001-core-tasks-bootstrap`'s approach) and confirm expected outcomes — Scenario 1 → `status-bar-global.test.tsx`, Scenario 2 → `status-bar-defaults.test.tsx`, Scenario 3 → `status-bar-custom.test.tsx`, Scenario 4 → `status-bar-override.test.tsx`, Scenario 5 → `reserved-key-enforcement.test.tsx` + `keybind-chain.test.tsx`'s dispatch-level test. All 62 tests pass (`npm test`), 0 tsc errors. Manual `./bin/mycli` verification in a real terminal not performed in this session — same noted follow-up as 001.
+- [X] T032 [P] Cleanup pass across `src/core/statusBar/`, `src/core/globalCommands.ts`, `src/core/reservedKeys.ts`, and touched files in `src/extensions/tasks/` (dead code, consistent naming, no leftover TODOs) — no TODOs/dead code/unused imports found; 0 tsc errors, 62/62 tests passing
 
 ---
 
