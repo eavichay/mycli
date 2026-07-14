@@ -1,9 +1,11 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRenderer } from "@opentui/react";
 import { DashboardShell } from "../core/DashboardShell.tsx";
 import { KeybindDispatcherProvider, useGlobalKeybinds } from "../core/keybinds/GlobalScope.tsx";
 import { useLocalKeybinds } from "../core/keybinds/LocalScope.tsx";
 import { FocusFrame } from "../core/FocusFrame.tsx";
+import { StatusBar, type FocusedExtensionStatusBarInfo } from "../core/StatusBar.tsx";
+import { createGlobalCommands, globalCommandsToKeyMap } from "../core/globalCommands.ts";
 import type { HostSlotRegistry } from "../core/slots.ts";
 import type { ExtensionLoader } from "../core/extensions/loader.ts";
 
@@ -18,19 +20,21 @@ function AppInner(props: AppProps) {
   const renderer = useRenderer();
   const [activeExtensionId, setActiveExtensionId] = useState<string | null>(null);
 
-  useGlobalKeybinds({
-    q: () => {
+  const globalCommands = createGlobalCommands({
+    quit: () => {
       renderer?.destroy();
     },
-    return: () => {
+    openFocusView: () => {
       if (activeExtensionId) return;
       const firstLoaded = props.extensionIds.find((id) => props.loader.getState(id).status === "loaded");
       if (firstLoaded) setActiveExtensionId(firstLoaded);
     },
-    escape: () => {
+    backToDashboard: () => {
       if (activeExtensionId) setActiveExtensionId(null);
     },
   });
+
+  useGlobalKeybinds(globalCommandsToKeyMap(globalCommands));
 
   // Local scope exists only so a focus view's own commands (registered by
   // the extension's FocusView itself, via useLocalKeybinds) take precedence
@@ -38,7 +42,20 @@ function AppInner(props: AppProps) {
   // that the local scope is "active" whenever a focus view is shown.
   useLocalKeybinds({}, activeExtensionId !== null);
 
+  // FR-005: clearing an extension's status-bar customization on focus-exit
+  // is host-owned, not an extension responsibility — this effect's cleanup
+  // fires the moment activeExtensionId changes away from an extension (or
+  // on unmount), regardless of whether that extension cleaned up itself.
+  useEffect(() => {
+    if (!activeExtensionId) return undefined;
+    const id = activeExtensionId;
+    return () => {
+      props.loader.getStatusBar(id).clear();
+    };
+  }, [activeExtensionId, props.loader]);
+
   let focusContent: React.ReactNode = null;
+  let focusedStatusBarInfo: FocusedExtensionStatusBarInfo | null = null;
   if (activeExtensionId) {
     const state = props.loader.getState(activeExtensionId);
     if (state.status === "loaded" && state.registration.FocusView) {
@@ -48,6 +65,7 @@ function AppInner(props: AppProps) {
           <FocusView />
         </FocusFrame>
       );
+      focusedStatusBarInfo = { manifest: state.manifest, statusBar: props.loader.getStatusBar(activeExtensionId) };
     }
   }
 
@@ -78,6 +96,7 @@ function AppInner(props: AppProps) {
       focusContent={focusContent}
       hasNoExtensions={props.extensionIds.length === 0}
       extraGridContent={errorTiles.length > 0 ? <>{errorTiles}</> : null}
+      statusBarContent={<StatusBar globalCommands={globalCommands} focused={focusedStatusBarInfo} />}
     />
   );
 }

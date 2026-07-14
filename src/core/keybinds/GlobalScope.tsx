@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from "react";
 import { useKeyboard } from "@opentui/react";
 import type { KeyEvent } from "@opentui/core";
+import { canonicalKeyId } from "./canonicalKeyId.ts";
+import { isReservedKey } from "../reservedKeys.ts";
 
 export type ScopeLevel = "focused" | "local" | "global";
 
@@ -66,14 +68,22 @@ export function useScopeCommands(
 
   const handler = useCallback<KeyClaimHandler>(
     (key) => {
-      const action = commands[key.name];
+      const id = canonicalKeyId(key);
+      // Reserved keys can never be claimed at focused/local scope, no matter
+      // how an extension's code tries to register one — this is the
+      // authoritative enforcement point (FR-007, FR-010): the manifest
+      // filter and the status-bar hint filter both guard *metadata/display*,
+      // but only this guarantees the reserved key's global action always
+      // actually fires, regardless of what any extension's own code does.
+      if (level !== "global" && isReservedKey(id)) return false;
+      const action = commands[id];
       if (action) {
         action();
         return true;
       }
       return false;
     },
-    [commands],
+    [commands, level],
   );
 
   useEffect(() => {

@@ -45,7 +45,7 @@ test("a broken Tasks manifest leaves the dashboard, status bar, and quit fully u
 
     // The rest of the dashboard — quit — must remain fully usable.
     act(() => {
-      mockInput.pressKey("q");
+      mockInput.pressKey("q", { ctrl: true });
     });
     await renderOnce();
     assert.equal(renderer.isDestroyed, true, "quit must still work when an extension fails to load");

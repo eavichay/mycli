@@ -46,7 +46,7 @@ test("the quit key destroys the renderer cleanly", async () => {
   await renderOnce();
 
   act(() => {
-    mockInput.pressKey("q");
+    mockInput.pressKey("q", { ctrl: true });
   });
   await renderOnce().catch(() => {});
 

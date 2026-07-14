@@ -85,3 +85,26 @@ test("when local scope is inactive, its keybinds never fire and fall through to 
 
   assert.deepEqual(log, ["global:b"]);
 });
+
+function ReservedKeyHarness(props: { log: string[] }) {
+  useLocalKeybinds({ "ctrl+q": () => props.log.push("local:ctrl+q") }, true);
+  useFocusedKeybinds({ "ctrl+q": () => props.log.push("focused:ctrl+q") }, true);
+  useGlobalKeybinds({ "ctrl+q": () => props.log.push("global:ctrl+q") });
+  return null;
+}
+
+test("a reserved key can never be claimed at focused or local scope, even if an extension's code directly registers it there — only global fires", async () => {
+  const log: string[] = [];
+  const { mockInput, renderOnce } = await testRender(
+    <KeybindDispatcherProvider>
+      <ReservedKeyHarness log={log} />
+    </KeybindDispatcherProvider>,
+    { width: 20, height: 5 },
+  );
+  await renderOnce();
+
+  mockInput.pressKey("q", { ctrl: true });
+  await renderOnce();
+
+  assert.deepEqual(log, ["global:ctrl+q"], "reserved key must always fall through to global, regardless of focused/local registration attempts");
+});

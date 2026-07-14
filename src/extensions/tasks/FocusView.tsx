@@ -3,6 +3,7 @@ import { useLocalKeybinds } from "../../core/keybinds/LocalScope.tsx";
 import { useFocusedKeybinds } from "../../core/keybinds/FocusedScope.tsx";
 import { sortTasks, filterTasks } from "./task-store.ts";
 import type { TasksReactiveStore } from "./reactive-store.ts";
+import type { StatusBarContextAPI } from "../../core/statusBar/StatusBarContextAPI.ts";
 
 type Mode =
   | { kind: "list" }
@@ -15,7 +16,7 @@ type Mode =
  * all wired through LocalScope so they only fire while this view is active
  * (US4 / SC-004).
  */
-export function createFocusView(store: TasksReactiveStore) {
+export function createFocusView(store: TasksReactiveStore, statusBar: StatusBarContextAPI) {
   return function FocusView() {
     const tasks = useSyncExternalStore(store.subscribe, store.getSnapshot);
     const [mode, setMode] = useState<Mode>({ kind: "list" });
@@ -27,6 +28,22 @@ export function createFocusView(store: TasksReactiveStore) {
     useEffect(() => {
       store.refresh();
     }, []);
+
+    // US3: reflect the current mode as custom status-bar hints/message,
+    // reverting to manifest defaults (via clear()) while in the plain list
+    // mode. The host clears this again on focus-exit regardless (FR-005).
+    useEffect(() => {
+      if (mode.kind === "list") {
+        statusBar.clear();
+        return;
+      }
+      const isTitleStep = mode.step === "title";
+      statusBar.setHints([
+        { key: "return", label: isTitleStep ? "Next" : "Submit" },
+        { key: "escape", label: "Cancel" },
+      ]);
+      statusBar.setMessage(error);
+    }, [mode, error]);
 
     const visible = sortTasks(filterTasks(tasks, showCompleted));
     const selected = visible[Math.min(selectedIndex, Math.max(0, visible.length - 1))];

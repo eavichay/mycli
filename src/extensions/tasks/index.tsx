@@ -9,7 +9,7 @@ const activate: ExtensionActivate = (ctx) => {
   const store = createTasksReactiveStore(storage);
 
   const PeekView = createPeekView(store);
-  const FocusView = createFocusView(store);
+  const FocusView = createFocusView(store, ctx.statusBar);
 
   ctx.registry.register({
     id: ctx.manifest.id,
